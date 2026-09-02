@@ -3,18 +3,23 @@
 
 <!--
     Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
-    Last Modified: 8/31/26
+    Last Modified: 9/1/26
 -->
 
 <head>
 	<title>HumGlot</title>
 	<meta charset="utf-8" />
+
+	<script src="index.js" defer="defer"></script>
 </head>
 
 <body>
-	<p>Hello, I am HumGlot :)</p>
-	<form method="post" action="after-click.html">
-		<input type="submit" value="Take your first quiz" />
+	<p>Welcome to HumGlot!</p>
+	<form method="get" action="take.php">
+		<input type="submit" value="Take a quiz" />
+	</form>
+	<form method="get" action="create.php">
+		<input type="submit" value="Create a quiz" />
 	</form>
 </body>
 </html>

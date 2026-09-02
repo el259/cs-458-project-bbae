@@ -1,0 +1,16 @@
+{
+    "questions": [
+        "What&#039;s the best burger?"
+    ],
+    "answers": [
+        [
+            "super",
+            "grande",
+            "bacon",
+            "cheddar"
+        ]
+    ],
+    "correct": [
+        "bacon"
+    ]
+}

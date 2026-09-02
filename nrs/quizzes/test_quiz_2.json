@@ -1,0 +1,16 @@
+{
+    "questions": [
+        "What&#039;s the worst number?"
+    ],
+    "answers": [
+        [
+            "One",
+            "Two",
+            "Three",
+            "Four"
+        ]
+    ],
+    "correct": [
+        "One"
+    ]
+}

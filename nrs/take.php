@@ -1,117 +1,61 @@
+<?php
+
+session_start();
+
+$_SESSION = [];
+session_destroy();
+
+?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 
 <!--
     Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
-    Last Modified: 8/31/26
+    Last Modified: 9/2/26
 -->
 
 <head>
 	<title>HumGlot</title>
 	<meta charset="utf-8" />
+
+	<script src="index.js" defer="defer"></script>
 </head>
 
 <body>
-	<form method="post" action="index.html">
-		<input type="submit" value="Go back" />
+	<form method="get" action="index.html">
+		<input type="submit" value="Go Back" />
 	</form>
-
 <?php
-	$questions = [ 'What is the best letter?', 'What is the square root of pi?' ];
-	$answers = [ ['a', 'b', 'c', 'd'], ['3.14', 'apple', '1.77', '0'] ];
-	$correct = [ 'a', '1.77' ];
-	
-	$guesses = [];
+$path = 'quizzes/*.json';
+$files = glob($path);
 
-	if($_SERVER['REQUEST_METHOD'] == 'POST')
-	{
-		if(isset($_POST['guesses']))
-		{
-			$guesses = $_POST['guesses'];
-
-			$totalCorrect = 0;
-
-			for($i = 0; $i < count($guesses); $i++)
-			{
-				if($guesses[$i] == $correct[$i])
-				{
-					$totalCorrect++;
-				}
-			}
+if(count($files) <= 0)
+{
 ?>
-			<p> Percent: <?= ($totalCorrect / count($correct)) * 100 ?></p>
+	<p>Error loading quizzes. Try again</p>
 <?php
-		}
-	}
+	exit;
+}
 
-	$toCheck = [ 'a', 'b', 'c', 'd' ];
-	$checkStrings = [ '', '', '', ''];
+for($i = 0; $i < count($files); $i++)
+{
+	$files[$i] = basename($files[$i], '.json');
+}
 
-	for($i = 0; $i < count($toCheck); $i++)
-	{
-		if($toCheck[$i] === $guesses[0])
-		{
-			$checkStrings[$i] = 'checked="checked"';
-			break;
-		}
-	}
 ?>
+	<p>Choose a quiz</p>
 
-	<form method="post" action="take.php">
-<?php	
-	for($i = 0; $i < count($questions); $i++)
+	<form method="post" action="quiz.php">
+<?php
+	foreach($files as $file)
 	{
-		$question = $questions[$i];
-		$options = $answers[$i];
 ?>
 		<div>
-		<p><?= $question ?></p>
-<?php
-		for($o = 0; $o < count($options); $o++)
-		{
-?>
-		<div>
-			<input type="radio" name="guesses[<?= $i ?>]" value="<?= $options[$o] ?>" id="<?= $options[$o] ?>" required="required"
-<?php
-		if(count($guesses) > $i)
-		{
-			if($options[$o] === $guesses[$i])
-			{
-?>
-	checked="checked"
-<?php
-			}
-		}
-?>
-/>
-			<label for="<?= $options[$o] ?>"><?= $options[$o] ?></label>
-		</div>
-<?php
-		}
-
-		if(count($guesses) > $i)
-		{
-			if($guesses[$i] === $correct[$i])
-			{
-?>
-		<p class="correct">Correct!</p>	
-<?php
-			}
-			else
-			{
-?>
-		<p class="incorrect">Incorrect</p>	
-<?php
-			}
-		}	
-?>
-			<!-- <input type="radio" name="guesses[]" value="b" id="b" <?= $checkStrings[1]; ?>/> 
-			<label for="b">B</label> -->
+			<input type="submit" name="quizName" value="<?= $file ?>" />
 		</div>
 <?php
 	}
 ?>
-		<input type="submit" value="Submit" />
 	</form>
 </body>
 </html>

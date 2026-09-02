@@ -1,0 +1,24 @@
+{
+    "questions": [
+        "What is the best letter?",
+        "What is the square root of pi?"
+    ],
+    "answers": [
+        [
+            "a",
+            "b",
+            "c",
+            "d"
+        ],
+        [
+            "3.14",
+            "apple",
+            "1.77",
+            "0"
+        ]
+    ],
+    "correct": [
+        "a",
+        "1.77"
+    ]
+}

@@ -3,21 +3,15 @@
 
 <!--
     Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
-    Last Modified: 9/2/26
+    Last Modified: 9/8/26
 -->
 
 <head>
 	<title>HumGlot</title>
 	<meta charset="utf-8" />
-
-	<!-- <script src="index.js" defer="defer"></script> -->
 </head>
 
 <body>
-	<p>Welcome to HumGlot!</p>
-	<form method="get" action="take.php">
-		<input type="submit" value="Take a quiz" />
-	</form>
 	<form method="get" action="create.php">
 		<input type="submit" value="Create a quiz" />
 	</form>

@@ -1,0 +1,16 @@
+{
+    "questions": [
+        "\u00bfC\u00f3mo te llamas?"
+    ],
+    "answers": [
+        [
+            "Me llamo\u2026",
+            "Te llamas\u2026",
+            "Nombre",
+            "Apellido"
+        ]
+    ],
+    "correct": [
+        "Me llamo\u2026"
+    ]
+}

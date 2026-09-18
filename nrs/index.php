@@ -12,6 +12,7 @@ session_start();
 <head>
 	<title>HumGlot</title>
 	<meta charset="utf-8" />
+	<link rel="stylesheet" href="style.css" />
 
 	<!-- <script src="index.js" defer="defer"></script> -->
 </head>

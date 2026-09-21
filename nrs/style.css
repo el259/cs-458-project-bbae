@@ -134,7 +134,7 @@ form div div input[type="text"] {
     flex: 1;
 }
 
-/* ---------- Lists / quizzis ---------- */
+/* ---------- Lists / quizzes ---------- */
 
 ul,
 ol {
@@ -154,6 +154,41 @@ li {
     color: #991b1b;
     font-weight: 600;
 }
+
+/* ---------- Tables ---------- */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 1.25rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+th,
+td {
+    padding: 0.7rem 0.9rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+    background: #f3f4f6;
+    font-weight: 600;
+    color: #111827;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover td {
+    background: #f9fafb;
+}
+
+/* ---------- Footer / Header ---------- */
 
 footer {
     margin-top: 2.5rem;
@@ -175,4 +210,14 @@ footer p {
     h1 {
         font-size: 1.7rem;
     }
+}
+
+.site-header {
+    margin-bottom: 1.5rem;
+}
+
+.logo {
+    display: block;
+    height: 48px;
+    width: auto;
 }

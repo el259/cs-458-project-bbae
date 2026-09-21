@@ -27,6 +27,8 @@ exit();
 
 
 <body>
+    <?php require __DIR__ . '/header.php'; ?>
+
     <form method="get" action="index.php">
         <input type="submit" value="Go Back" />
     </form>

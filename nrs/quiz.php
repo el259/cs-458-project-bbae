@@ -164,6 +164,8 @@ if($error === '' && isset($_SESSION['quizName']))
 
 
 <body>
+    <?php require __DIR__ . '/header.php'; ?>
+
     <form method="get" action="take.php">
         <input type="submit" value="Go Back" />
     </form>

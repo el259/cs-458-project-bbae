@@ -36,6 +36,8 @@ exit();
 
 
 <body>
+    <?php require __DIR__ . '/header.php'; ?>
+
     <p><?= htmlspecialchars('Welcome, ' . $_SESSION['account'] . '!', ENT_QUOTES, 'UTF-8') ?></p>
 
 

@@ -118,11 +118,16 @@ if($login || $signup)
 }
 
 
+/*
 if(isset($_SESSION['account']))
 {
     $welcome_msg = $welcome_msg . ', ' . $_SESSION['account'];
 }
+*/
+
+
 ?>
+
 
 
 <!DOCTYPE html>
@@ -147,6 +152,7 @@ if(isset($_SESSION['account']))
 
 
 <body>
+    <?php require __DIR__ . '/header.php'; ?>
 
     <p><?= htmlspecialchars($welcome_msg, ENT_QUOTES, 'UTF-8') . '!' ?></p>
 

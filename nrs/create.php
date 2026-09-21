@@ -179,6 +179,8 @@ if (isset($_POST['cancelQuiz']))
 </head>
 
 <body>
+    <?php require __DIR__ . '/header.php'; ?>
+
     <h1>Create a Quiz</h1>
 
 

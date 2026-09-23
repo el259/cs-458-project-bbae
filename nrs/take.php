@@ -7,6 +7,12 @@ if (!isset($_SESSION['account']))
 header("Location: index.php");
 exit();
 }
+
+
+if(isset($_SESSION['quizName']))
+{
+	unset($_SESSION['quizName']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">

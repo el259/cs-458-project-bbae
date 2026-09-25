@@ -87,7 +87,7 @@ foreach ($files as $filepath)
 <head>
     <title>HumGlot</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="global.css" />
 </head>
 
 

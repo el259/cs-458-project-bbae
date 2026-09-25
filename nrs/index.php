@@ -139,12 +139,12 @@
         </div>
 
         <div class="signin-panel">
-            <h2>Sign in to view your dashboard!</h2>
-            
             <?php
             if(!isset($_SESSION['account']))
             {
             ?>
+
+            <h2>Sign in to view your dashboard!</h2>
 
             <!-- Login and Signup Form -->
             <form method="post" action="index.php">

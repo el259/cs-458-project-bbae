@@ -1,5 +1,14 @@
+<?php
+$logo_href = "index.php";
+if (!empty($_SESSION['teacher'])) {
+    $logo_href = "teacher.php";
+} else {
+    $logo_href = "student.php";
+}
+?>
+
 <div class="site-header">
-    <a class="logo" href="index.php">
+    <a class="logo" href="<?= $logo_href ?>">
         <p>HumGlot</p>
     </a>
 

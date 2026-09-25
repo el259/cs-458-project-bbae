@@ -27,6 +27,7 @@ if(isset($_SESSION['quizName']))
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="take.css" />
 </head>
 
 

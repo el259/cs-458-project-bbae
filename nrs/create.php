@@ -173,6 +173,7 @@ if (isset($_POST['cancelQuiz']))
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="create_quiz.css" />
 </head>
 
 <body>

@@ -228,6 +228,7 @@ exit();
 <title>HumGlot</title>
 <meta charset="utf-8" />
 <link rel="stylesheet" href="global.css" />
+<link rel="stylesheet" href="create_classroom.css" />
 </head>
 
 

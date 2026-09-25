@@ -1,5 +1,5 @@
 <?php
-    $version = '0.0.2.3';
+    $version = '0.0.3.0';
 ?>
 
 <footer>

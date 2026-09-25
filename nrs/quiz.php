@@ -1,12 +1,10 @@
 <?php
 session_start();
 
-
-if (!isset($_SESSION['account']))
-{
-header("Location: index.php");
-exit();
-}
+// Make sure the user is logged in
+//   else, it sends to signin.php
+require __DIR__ . '/auth.php';
+requireAccount('assignment');
 
 
 $error = '';

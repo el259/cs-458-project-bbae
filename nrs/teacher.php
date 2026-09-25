@@ -1,13 +1,10 @@
 <?php
 session_start();
 
-
-
-if (!isset($_SESSION['account']) || empty($_SESSION['teacher']))
-{
-header("Location: index.php");
-exit();
-}
+// Make sure the user is logged in
+//   else, it sends to signin.php
+require __DIR__ . '/auth.php';
+requireTeacher('dashboard');
 
 
 
@@ -304,7 +301,7 @@ if (isset($data['students']) && is_array($data['students']))
     </form>
 
 
-    <form method="post" action="index.php">
+    <form method="post" action="signin.php">
         <input type="submit" name="logout" value="Sign Out" />
     </form>
 

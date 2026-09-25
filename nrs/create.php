@@ -1,13 +1,10 @@
 <?php
 session_start();
 
-
-// Make sure the user is logged in and is a teacher
-if (!isset($_SESSION['account']) || empty($_SESSION['teacher']))
-{
-header("Location: index.php");
-exit();
-}
+// Make sure the user is logged in
+//   else, it sends to signin.php
+require __DIR__ . '/auth.php';
+requireTeacher('dashboard');
 
 
 // Start a new quiz

@@ -1,6 +1,7 @@
 <?php
     session_start();
     require __DIR__ . '/auth.php';
+    require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
     // Sign out
     if (isset($_POST['logout']))
@@ -22,109 +23,152 @@
     ];
     $signinMessage = $signinMessages[$reason] ?? 'Sign in to continue!';
 
-    $login = array_key_exists('login', $_POST);
-    $signup = array_key_exists('signup', $_POST);
+    $login = isset($_POST['login']);
+    $signup = isset($_POST['signup']);
 
-
-    if($login || $signup)
+    if ($login || $signup)
     {
-        $name = trim($_POST['account'] ?? '');
-        $filepath = __DIR__ . '/accounts.json';
+        $username = trim($_POST['account'] ?? '');
+        $password = $_POST['password'] ?? '';
 
-
-        if($name === '')
+        if ($username === '')
         {
             $error = 'Please enter a username.';
         }
-        else if(file_exists($filepath))
+        else if (!preg_match('/^[A-Za-z0-9_-]+$/', $username))
         {
-            $jsonString = file_get_contents($filepath);
-            $data = json_decode($jsonString, true);
-
-
-            if(!is_array($data))
-            {
-                $data = [
-                    'names' => [],
-                    'teacher' => []
-                ];
-            }
-
-
-            $names = isset($data['names']) ? $data['names'] : [];
-            $teacher = isset($data['teacher']) ? $data['teacher'] : [];
-
-
-            if($login)
-            {
-                $index = array_search($name, $names, true);
-
-
-                if($index === false)
-                {
-                    $error = 'No account found, try again';
-                }
-                else
-                {
-                    $_SESSION['account'] = $name;
-                    $_SESSION['teacher'] = !empty($teacher[$index]);
-
-
-                    if ($next)
-                    {
-                        header("Location: $next");
-                        exit();
-                    }
-                    else if ($_SESSION['teacher'])
-                    {
-                        header("Location: teacher.php");
-                        exit();
-                    }
-                    else
-                    {
-                        header("Location: student.php");
-                        exit();
-                    }
-                }
-            }
-            else if($signup)
-            {
-                if(!in_array($name, $names, true))
-                {
-                    $toName = $name;
-                    $toTeacher = false;
-
-
-                    $names[] = $toName;
-                    $teacher[] = $toTeacher;
-
-
-                    $data = [
-                        'names' => $names,
-                        'teacher' => $teacher
-                    ];
-
-
-                    $jsonString = json_encode($data, JSON_PRETTY_PRINT);
-                    file_put_contents($filepath, $jsonString);
-
-
-                    $_SESSION['account'] = $toName;
-                    $_SESSION['teacher'] = $toTeacher;
-
-
-                    header("Location: " . ($next ?? 'student.php'));
-                    exit();
-                }
-                else
-                {
-                    $error = 'That username is already taken.';
-                }
-            }
+            $error = 'Username may contain only letters, numbers, underscores, and hyphens.';
+        }
+        else if ($password === '')
+        {
+            $error = 'Please enter a password.';
+        }
+        else if ($signup && strlen($password) < 8)
+        {
+            $error = 'Password must contain at least 8 characters.';
         }
         else
         {
-            $error = 'Could not load accounts. Try again.';
+            $email = strtolower($username) . '@example.com';
+            $databaseConnection = hum_conn_no_login();
+
+            if ($login)
+            {
+                $sql = '
+                    SELECT "USER_ID", "PWD_HASH", "IS_ACTIVE", "IS_ADMIN"
+                    FROM "APP_USER"
+                    WHERE "EMAIL" = :email
+                ';
+                $statement = oci_parse($databaseConnection, $sql);
+                oci_bind_by_name($statement, ':email', $email);
+
+                if (!oci_execute($statement))
+                {
+                    $error = 'Unable to complete the login.';
+                }
+                else
+                {
+                    $user = oci_fetch_assoc($statement);
+
+                    if ($user === false || $user['IS_ACTIVE'] !== 'Y' ||
+                        !password_verify($password, $user['PWD_HASH']))
+                    {
+                        $error = 'Invalid username or password.';
+                    }
+                    else
+                    {
+                        session_regenerate_id(true);
+                        $_SESSION['account'] = $username;
+                        $_SESSION['user_id'] = $user['USER_ID'];
+                        $_SESSION['teacher'] = $user['IS_ADMIN'] === 'Y';
+
+                        oci_free_statement($statement);
+                        oci_close($databaseConnection);
+
+                        header('Location: ' . ($next ??
+                            ($_SESSION['teacher'] ? 'teacher.php' : 'student.php')));
+                        exit();
+                    }
+                }
+
+                oci_free_statement($statement);
+            }
+            else
+            {
+                $checkSql = '
+                    SELECT "USER_ID"
+                    FROM "APP_USER"
+                    WHERE "EMAIL" = :email
+                ';
+                $checkStatement = oci_parse($databaseConnection, $checkSql);
+                oci_bind_by_name($checkStatement, ':email', $email);
+
+                if (!oci_execute($checkStatement))
+                {
+                    $error = 'Unable to check the account.';
+                }
+                else if (oci_fetch_assoc($checkStatement) !== false)
+                {
+                    $error = 'That username is already taken.';
+                }
+                else
+                {
+                    $insertSql = '
+                        INSERT INTO "APP_USER" (
+                            "EMAIL", "FIRST_NAME", "LAST_NAME", "PWD_HASH"
+                        ) VALUES (
+                            :email, :first_name, :last_name, :pwd_hash
+                        )
+                    ';
+                    $insertStatement = oci_parse($databaseConnection, $insertSql);
+                    $firstName = $username;
+                    $lastName = 'User';
+                    $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+
+                    oci_bind_by_name($insertStatement, ':email', $email);
+                    oci_bind_by_name($insertStatement, ':first_name', $firstName);
+                    oci_bind_by_name($insertStatement, ':last_name', $lastName);
+                    oci_bind_by_name($insertStatement, ':pwd_hash', $passwordHash);
+
+                    if (!oci_execute($insertStatement, OCI_NO_AUTO_COMMIT))
+                    {
+                        oci_rollback($databaseConnection);
+                        $error = 'Unable to create the account.';
+                    }
+                    else
+                    {
+                        oci_commit($databaseConnection);
+                        $userSql = '
+                            SELECT "USER_ID"
+                            FROM "APP_USER"
+                            WHERE "EMAIL" = :email
+                        ';
+                        $userStatement = oci_parse($databaseConnection, $userSql);
+                        oci_bind_by_name($userStatement, ':email', $email);
+                        oci_execute($userStatement);
+                        $newUser = oci_fetch_assoc($userStatement);
+
+                        session_regenerate_id(true);
+                        $_SESSION['account'] = $username;
+                        $_SESSION['user_id'] = $newUser['USER_ID'];
+                        $_SESSION['teacher'] = false;
+
+                        oci_free_statement($userStatement);
+                        oci_free_statement($insertStatement);
+                        oci_free_statement($checkStatement);
+                        oci_close($databaseConnection);
+
+                        header('Location: ' . ($next ?? 'student.php'));
+                        exit();
+                    }
+
+                    oci_free_statement($insertStatement);
+                }
+
+                oci_free_statement($checkStatement);
+            }
+
+            oci_close($databaseConnection);
         }
     }
 ?>
@@ -173,8 +217,8 @@
                 }
                 ?>
 
-                <label for="acc">Password (Placeholder, Disabled)</label>
-                <input type="password" name="account" id="acc" required="required" placeholder="Enter your password" disabled />
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required="required" placeholder="Enter your password" />
 
                 <input type="submit" name="login" value="Log In" />
                 <input type="submit" name="signup" value="Sign Up" />

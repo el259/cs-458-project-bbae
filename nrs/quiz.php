@@ -1,112 +1,76 @@
 <?php
 session_start();
-
-// Make sure the user is logged in
-//   else, it sends to signin.php
 require __DIR__ . '/auth.php';
 requireAccount('assignment');
-
+require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
 $error = '';
-
-
-if(!isset($_SESSION['quizName']))
-{
-if($_SERVER['REQUEST_METHOD'] == 'POST')
-    {
-if(isset($_POST['quizName']))
-        {
-            $_SESSION['quizName'] = trim($_POST['quizName']);
-        }
-else
-        {
-            $error = 'No quiz selected. Try Again';
-        }
-    }
-else
-    {
-        $error = 'Error loading quiz. Try Again';
-    }
-}
-
-
+$quizId = intval($_POST['quizId'] ?? $_SESSION['quizId'] ?? 0);
 $questions = [];
 $guesses = [];
 $totalCorrect = 0;
 $showScore = false;
 
+if ($quizId <= 0) {
+    $error = 'No quiz selected. Try again.';
+} else {
+    $_SESSION['quizId'] = $quizId;
+    $databaseConnection = hum_conn_no_login();
+    $sql = '
+        SELECT "QUIZ_JSON"
+        FROM "QUIZ"
+        WHERE "QUIZ_ID" = :quiz_id
+    ';
+    $statement = oci_parse($databaseConnection, $sql);
+    oci_bind_by_name($statement, ':quiz_id', $quizId);
 
-if($error === '' && isset($_SESSION['quizName']))
-{
-    $name = $_SESSION['quizName'];
+    if (!oci_execute($statement)) {
+        $error = 'Unable to load the quiz.';
+    } else {
+        $quiz = oci_fetch_assoc($statement);
 
-
-    if (!preg_match('/^[A-Za-z0-9_-]+$/', $name))
-    {
-        $error = 'Error loading quiz. Try Again';
-    }
-    else
-    {
-        $filepath = __DIR__ . '/quizzes/' . $name . '.json';
-
-
-        if(!is_file($filepath))
-        {
-            $error = 'Error loading quiz. Try Again';
-        }
-        else
-        {
-            $jsonString = file_get_contents($filepath);
+        if ($quiz === false) {
+            $error = 'Quiz not found.';
+        } else {
+            $jsonValue = $quiz['QUIZ_JSON'];
+            $jsonString = is_object($jsonValue) && method_exists($jsonValue, 'load')
+                ? $jsonValue->load()
+                : (string) $jsonValue;
             $data = json_decode($jsonString, true);
 
-
-            if(isset($data['questions']) && is_array($data['questions']))
-            {
-                $rawQuestions = $data['questions'];
-
-
-                for($q = 0; $q < count($rawQuestions); $q++)
-                {
-                    if(is_array($rawQuestions[$q]) && isset($rawQuestions[$q]['question']))
-                    {
-                        $optionList = isset($rawQuestions[$q]['answers']) && is_array($rawQuestions[$q]['answers'])
-                            ? $rawQuestions[$q]['answers']
+            if (!is_array($data) || !isset($data['questions']) ||
+                !is_array($data['questions'])) {
+                $error = 'Quiz data is invalid.';
+            } else {
+                foreach ($data['questions'] as $index => $rawQuestion) {
+                    if (is_array($rawQuestion) && isset($rawQuestion['question'])) {
+                        $questionText = $rawQuestion['question'];
+                        $optionList = isset($rawQuestion['answers']) &&
+                            is_array($rawQuestion['answers'])
+                            ? $rawQuestion['answers']
                             : [];
-                        $correctIndex = isset($rawQuestions[$q]['correct'])
-                            ? intval($rawQuestions[$q]['correct'])
+                        $correctIndex = isset($rawQuestion['correct'])
+                            ? intval($rawQuestion['correct'])
                             : -1;
-                        $questionText = $rawQuestions[$q]['question'];
-                    }
-                    else
-                    {
-                        $optionList = [];
+                    } else {
+                        $questionText = (string) $rawQuestion;
+                        $optionList = isset($data['answers'][$index]) &&
+                            is_array($data['answers'][$index])
+                            ? $data['answers'][$index]
+                            : [];
                         $correctIndex = -1;
-                        $questionText = (string)$rawQuestions[$q];
 
-
-                        if(isset($data['answers'][$q]) && is_array($data['answers'][$q]))
-                        {
-                            $optionList = $data['answers'][$q];
-                        }
-
-
-                        if(isset($data['correct'][$q]))
-                        {
-                            $correctValue = $data['correct'][$q];
-
-
-                            if(is_int($correctValue) || (is_string($correctValue) && ctype_digit($correctValue)))
-                            {
+                        if (isset($data['correct'][$index])) {
+                            $correctValue = $data['correct'][$index];
+                            if (is_int($correctValue) ||
+                                (is_string($correctValue) && ctype_digit($correctValue))) {
                                 $correctIndex = intval($correctValue);
-                            }
-                            else
-                            {
+                            } else {
                                 $found = array_search($correctValue, $optionList, true);
-                                $correctIndex = ($found === false) ? -1 : $found;
+                                $correctIndex = $found === false ? -1 : $found;
                             }
                         }
                     }
-
 
                     $questions[] = [
                         'question' => $questionText,
@@ -115,29 +79,22 @@ if($error === '' && isset($_SESSION['quizName']))
                     ];
                 }
             }
+        }
+    }
 
+    oci_free_statement($statement);
+    oci_close($databaseConnection);
+}
 
-            if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['guesses']) && is_array($_POST['guesses']))
-            {
-                $guesses = $_POST['guesses'];
-            }
+if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
+    $guesses = $_POST['guesses'];
 
-
-            if(count($questions) > 0 && count($guesses) == count($questions))
-            {
-                $showScore = true;
-
-
-                for($i = 0; $i < count($questions); $i++)
-                {
-                    $correctIndex = isset($questions[$i]['correct']) ? intval($questions[$i]['correct']) : -1;
-
-
-                    if(isset($guesses[$i]) && intval($guesses[$i]) === $correctIndex)
-                    {
-                        $totalCorrect++;
-                    }
-                }
+    if (count($questions) > 0 && count($guesses) === count($questions)) {
+        $showScore = true;
+        foreach ($questions as $index => $question) {
+            if (isset($guesses[$index]) &&
+                intval($guesses[$index]) === intval($question['correct'])) {
+                $totalCorrect++;
             }
         }
     }
@@ -145,116 +102,64 @@ if($error === '' && isset($_SESSION['quizName']))
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
-
-<!--
-    Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
-    Last Modified: 9/20/26
-    QUIZ.PHP
--->
-
-
 <head>
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="global.css" />
     <link rel="stylesheet" href="quiz.css" />
 </head>
-
-
 <body>
-    <?php require __DIR__ . '/header.php'; ?>
+<?php require __DIR__ . '/header.php'; ?>
 
-    <form method="get" action="take.php">
-        <input type="submit" value="Go Back" />
-    </form>
-
-
-<?php
-if($error !== '')
-{
-?>
-<p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-<?php
-}
-else if(count($questions) <= 0)
-{
-?>
-<p>Error loading quiz. Try Again</p>
-<?php
-}
-else
-{
-if($showScore)
-    {
-        $percent = ($totalCorrect / count($questions)) * 100;
-?>
-<p> Percent: <?= htmlspecialchars((string)$percent, ENT_QUOTES, 'UTF-8') ?></p>
-<?php
-    }
-?>
-
-
-<form method="post" action="quiz.php">
-<?php
-for($i = 0; $i < count($questions); $i++)
-    {
-        $question = isset($questions[$i]['question']) ? $questions[$i]['question'] : '';
-        $options = isset($questions[$i]['answers']) && is_array($questions[$i]['answers']) ? $questions[$i]['answers'] : [];
-        $correctIndex = isset($questions[$i]['correct']) ? intval($questions[$i]['correct']) : -1;
-?>
-<div>
-<p><?= htmlspecialchars($question, ENT_QUOTES, 'UTF-8') ?></p>
-<?php
-for($o = 0; $o < count($options); $o++)
-        {
-            $optionId = 'q' . $i . 'o' . $o;
-            $isChecked = isset($guesses[$i]) && intval($guesses[$i]) === $o;
-?>
-<div>
-<input type="radio" name="guesses[<?= $i ?>]" value="<?= $o ?>" id="<?= $optionId ?>" required="required"
-<?php
-if($isChecked)
-            {
-?>
-checked="checked"
-<?php
-            }
-?>
-/>
-<label for="<?= $optionId ?>"><?= htmlspecialchars((string)$options[$o], ENT_QUOTES, 'UTF-8') ?></label>
-</div>
-<?php
-        }
-
-
-if($showScore)
-        {
-if(isset($guesses[$i]) && intval($guesses[$i]) === $correctIndex)
-            {
-?>
-<p class="correct">Correct!</p>
-<?php
-            }
-else
-            {
-?>
-<p class="incorrect">Incorrect</p>
-<?php
-            }
-        }
-?>
-</div>
-<?php
-    }
-?>
-<input type="submit" value="Submit" />
+<form method="get" action="take.php">
+    <input type="submit" value="Go Back" />
 </form>
-<?php
-}
-?>
+
+<?php if ($error !== ''): ?>
+    <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+<?php elseif (count($questions) === 0): ?>
+    <p>Error loading quiz. Try again.</p>
+<?php else: ?>
+    <?php if ($showScore): ?>
+        <?php $percent = ($totalCorrect / count($questions)) * 100; ?>
+        <p>Percent: <?= htmlspecialchars((string) $percent, ENT_QUOTES, 'UTF-8') ?></p>
+    <?php endif; ?>
+
+    <form method="post" action="quiz.php">
+        <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />
+        <?php foreach ($questions as $questionIndex => $question): ?>
+            <div>
+                <p><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
+                    <?php $optionId = 'q' . $questionIndex . 'o' . $answerIndex; ?>
+                    <div>
+                        <input
+                            type="radio"
+                            name="guesses[<?= $questionIndex ?>]"
+                            value="<?= $answerIndex ?>"
+                            id="<?= $optionId ?>"
+                            required="required"
+                            <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
+                        />
+                        <label for="<?= $optionId ?>">
+                            <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+
+                <?php if ($showScore): ?>
+                    <?php if (isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === intval($question['correct'])): ?>
+                        <p class="correct">Correct!</p>
+                    <?php else: ?>
+                        <p class="incorrect">Incorrect</p>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+        <input type="submit" value="Submit" />
+    </form>
+<?php endif; ?>
 
 <?php require __DIR__ . '/footer.php'; ?>
-
 </body>
 </html>

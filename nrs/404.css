@@ -1,0 +1,4 @@
+body > *:not(.site-header):not(footer) {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}

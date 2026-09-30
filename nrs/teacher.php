@@ -1,5 +1,5 @@
 <?php
-session_start();
+    session_start();
 
 require_once dirname(__DIR__, 3) . '/hum_conn_no_login.php';
 

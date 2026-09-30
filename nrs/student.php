@@ -1,13 +1,10 @@
 <?php
 session_start();
 
-
-if (!isset($_SESSION['account']))
-{
-header("Location: index.php");
-exit();
-}
-
+// Make sure the user is logged in
+//   else, it sends to signin.php
+require __DIR__ . '/auth.php';
+requireAccount('dashboard');
 
 if (!empty($_SESSION['teacher']))
 {
@@ -31,23 +28,32 @@ exit();
 <head>
     <title>HumGlot</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="student.css" />
 </head>
 
 
 <body>
     <?php require __DIR__ . '/header.php'; ?>
 
-    <p><?= htmlspecialchars('Welcome, ' . $_SESSION['account'] . '!', ENT_QUOTES, 'UTF-8') ?></p>
+    <h2><?= htmlspecialchars('Welcome, ' . $_SESSION['account'] . '!', ENT_QUOTES, 'UTF-8') ?></h2>
 
+
+    <h3>Your classrooms</h3>
+
+        <p>None.</p>
+
+    <h3>Your assignments</h3>
+
+        <p>None.</p>
 
     <form method="get" action="take.php">
-    <input type="submit" value="Take a quiz" />
+        <input type="submit" value="Take a quiz" />
     </form>
 
 
-    <form method="post" action="index.php">
-    <input type="submit" name="logout" value="Sign Out" />
+    <form method="post" action="signin.php">
+        <input type="submit" name="logout" value="Sign Out" />
     </form>
 
     <?php require __DIR__ . '/footer.php'; ?>

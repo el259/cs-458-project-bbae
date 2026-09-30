@@ -1,28 +1,3 @@
--- Make sure there is a user to own the quizzes.
-MERGE INTO "APP_USER" target
-USING (
-    SELECT
-        'quiz-import@example.com' AS email,
-        'Quiz' AS first_name,
-        'Import' AS last_name,
-        'quiz-import-password-hash' AS pwd_hash
-    FROM dual
-) source
-ON (target."EMAIL" = source.email)
-WHEN NOT MATCHED THEN
-    INSERT (
-        "EMAIL",
-        "FIRST_NAME",
-        "LAST_NAME",
-        "PWD_HASH"
-    )
-    VALUES (
-        source.email,
-        source.first_name,
-        source.last_name,
-        source.pwd_hash
-    );
-
 -- data.json
 INSERT INTO "QUIZ" (
     "CREATOR_ID",
@@ -59,7 +34,7 @@ SELECT
     ]
 }~'
 FROM "APP_USER" u
-WHERE u."EMAIL" = 'quiz-import@example.com'
+WHERE u."EMAIL" = 'julie@example.com'
   AND NOT EXISTS (
       SELECT 1
       FROM "QUIZ" existing_quiz
@@ -95,7 +70,7 @@ SELECT
     ]
 }~'
 FROM "APP_USER" u
-WHERE u."EMAIL" = 'quiz-import@example.com'
+WHERE u."EMAIL" = 'julie@example.com'
   AND NOT EXISTS (
       SELECT 1
       FROM "QUIZ" existing_quiz
@@ -139,7 +114,7 @@ SELECT
     ]
 }~'
 FROM "APP_USER" u
-WHERE u."EMAIL" = 'quiz-import@example.com'
+WHERE u."EMAIL" = 'julie@example.com'
   AND NOT EXISTS (
       SELECT 1
       FROM "QUIZ" existing_quiz
@@ -175,7 +150,7 @@ SELECT
     ]
 }~'
 FROM "APP_USER" u
-WHERE u."EMAIL" = 'quiz-import@example.com'
+WHERE u."EMAIL" = 'julie@example.com'
   AND NOT EXISTS (
       SELECT 1
       FROM "QUIZ" existing_quiz
@@ -211,7 +186,7 @@ SELECT
     ]
 }~'
 FROM "APP_USER" u
-WHERE u."EMAIL" = 'quiz-import@example.com'
+WHERE u."EMAIL" = 'julie@example.com'
   AND NOT EXISTS (
       SELECT 1
       FROM "QUIZ" existing_quiz

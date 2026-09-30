@@ -5,6 +5,13 @@ session_start();
 //   else, it sends to signin.php
 require __DIR__ . '/auth.php';
 requireTeacher('dashboard');
+require_once dirname(__DIR__) . '/hum_conn_no_login.php';
+
+if (!isset($_SESSION['user_id']))
+{
+    header('Location: signin.php');
+    exit();
+}
 
 
 // Start a new quiz
@@ -69,9 +76,21 @@ if (isset($_POST['addQuestion']))
     {
         $error = 'Please enter at least two answers.';
     }
-    else if (!isset($answers[$correct]) || $answers[$correct] === '')
+    else if (count($answers) > 6)
     {
-        $error = 'Please mark a valid correct answer.';
+        $error = 'A question cannot have more than six answers.';
+    }
+    else if ($inputType === 'true-false' && count($answers) !== 2)
+    {
+        $error = 'True/false questions must have exactly two answers.';
+    }
+    else if (in_array('', $answers, true))
+    {
+        $error = 'Answer choices cannot be empty.';
+    }
+    else if (!array_key_exists($correct, $answers))
+    {
+        $error = 'Please select a correct answer.';
     }
     else
     {
@@ -92,60 +111,88 @@ exit();
 // Create the quiz
 if (isset($_POST['createQuiz']))
 {
-    $quizName = $_SESSION['quiz']['name'];
+    $quizName = trim($_SESSION['quiz']['name']);
+    $questions = $_SESSION['quiz']['questions'];
 
-
-if ($quizName != '' && count($_SESSION['quiz']['questions']) > 0)
+    if ($quizName === '' || count($questions) === 0)
     {
-        $slug = preg_replace('/[^A-Za-z0-9_-]/', '_', str_replace(' ', '_', $quizName));
-        $slug = trim($slug, '_');
+        $error = 'You must give the quiz a name and add at least one question.';
+    }
+    else
+    {
+        $databaseConnection = hum_conn_no_login();
+        $checkSql = '
+            SELECT "QUIZ_ID"
+            FROM "QUIZ"
+            WHERE "CREATOR_ID" = :creator_id AND "TITLE" = :title
+        ';
+        $checkStatement = oci_parse($databaseConnection, $checkSql);
+        $creatorId = $_SESSION['user_id'];
+        oci_bind_by_name($checkStatement, ':creator_id', $creatorId);
+        oci_bind_by_name($checkStatement, ':title', $quizName);
 
-
-        if ($slug === '')
+        if (!oci_execute($checkStatement))
         {
-            $error = 'Quiz name must include letters or numbers.';
+            $error = 'Unable to check for existing quizzes.';
+        }
+        else if (oci_fetch_assoc($checkStatement) !== false)
+        {
+            $error = 'A quiz with that name already exists.';
         }
         else
         {
-            $quizDir = __DIR__ . '/quizzes';
-
-
-            if (!is_dir($quizDir))
+            $quizJson = json_encode($_SESSION['quiz'], JSON_UNESCAPED_UNICODE);
+            if ($quizJson === false)
             {
-                mkdir($quizDir, 0755, true);
+                $error = 'Unable to format the quiz data.';
             }
-
-
-            $filepath = $quizDir . '/' . $slug . '.json';
-
-
-if (file_exists($filepath))
-        {
-            $error = 'Quiz already exists. Try again.';
-        }
-else
-        {
-            $jsonString = json_encode($_SESSION['quiz'], JSON_PRETTY_PRINT);
-
-
-if (file_put_contents($filepath, $jsonString))
+            else
             {
-unset($_SESSION['quiz']);
+                $insertSql = '
+                    INSERT INTO "QUIZ" (
+                        "CREATOR_ID", "TITLE", "DESCRIPTION", "QUIZ_JSON"
+                    ) VALUES (:creator_id, :title, NULL, :quiz_json)
+                ';
+                $insertStatement = oci_parse($databaseConnection, $insertSql);
+                $quizClob = oci_new_descriptor($databaseConnection, OCI_D_LOB);
 
+                if ($quizClob === false)
+                {
+                    $error = 'Unable to create the quiz data object.';
+                }
+                else
+                {
+                    oci_bind_by_name($insertStatement, ':creator_id', $creatorId);
+                    oci_bind_by_name($insertStatement, ':title', $quizName);
+                    oci_bind_by_name($insertStatement, ':quiz_json', $quizClob, -1, OCI_B_CLOB);
+                    $quizClob->writeTemporary($quizJson, OCI_TEMP_CLOB);
 
-header("Location: teacher.php");
-exit();
-            }
-else
-            {
-                $error = 'Error creating quiz. Try again.';
+                    if (!oci_execute($insertStatement, OCI_NO_AUTO_COMMIT))
+                    {
+                        oci_rollback($databaseConnection);
+                        $error = 'Unable to save the quiz.';
+                    }
+                    else
+                    {
+                        oci_commit($databaseConnection);
+                        unset($_SESSION['quiz']);
+                        $quizClob->free();
+                        oci_free_statement($insertStatement);
+                        oci_free_statement($checkStatement);
+                        oci_close($databaseConnection);
+                        header('Location: teacher.php');
+                        exit();
+                    }
+
+                    $quizClob->free();
+                }
+
+                oci_free_statement($insertStatement);
             }
         }
-        }
-    }
-else
-    {
-        $error = 'You must give the quiz a name and add at least one question.';
+
+        oci_free_statement($checkStatement);
+        oci_close($databaseConnection);
     }
 }
 
@@ -327,77 +374,10 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 
 <div>
     <p>Answers</p>
-
-
-    <div>
-        <input
-        type="radio"
-        name="correct"
-        value="0"
-        required="required"
-        />
-
-
-        <input
-        type="text"
-        name="answer[0]"
-        placeholder="Answer 1"
-        required="required"
-        />
-    </div>
-
-
-    <div>
-        <input
-        type="radio"
-        name="correct"
-        value="1"
-        />
-
-
-        <input
-        type="text"
-        name="answer[1]"
-        placeholder="Answer 2"
-        required="required"
-        />
-    </div>
-
-
-    <div>
-        <input
-        type="radio"
-        name="correct"
-        value="2"
-        />
-
-
-        <input
-        type="text"
-        name="answer[2]"
-        placeholder="Answer 3"
-        required="required"
-        />
-    </div>
-
-
-    <div>
-        <input
-        type="radio"
-        name="correct"
-        value="3"
-        />
-
-
-        <input
-        type="text"
-        name="answer[3]"
-        placeholder="Answer 4"
-        required="required"
-        />
-    </div>
-
+    <div id="answers"></div>
 </div>
+
+<button type="button" id="addAnswer">Add Answer</button>
 
 
     <div>
@@ -438,6 +418,91 @@ if (count($_SESSION['quiz']['questions']) > 0)
     ?>
 
 <?php require __DIR__ . '/footer.php'; ?>
+
+<script>
+const inputType = document.getElementById('inputType');
+const answersContainer = document.getElementById('answers');
+const addAnswerButton = document.getElementById('addAnswer');
+
+function createAnswerRow(index, value = '') {
+    const row = document.createElement('div');
+    const correct = document.createElement('input');
+    const answer = document.createElement('input');
+    const remove = document.createElement('button');
+
+    row.className = 'answer-row';
+
+    correct.type = 'radio';
+    correct.name = 'correct';
+    correct.value = index;
+    correct.required = index === 0;
+
+    answer.type = 'text';
+    answer.name = `answer[${index}]`;
+    answer.placeholder = `Answer ${index + 1}`;
+    answer.value = value;
+    answer.required = true;
+
+    remove.type = 'button';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', function () {
+        row.remove();
+        renumberAnswers();
+    });
+
+    row.append(correct, answer, remove);
+    return row;
+}
+
+function renumberAnswers() {
+    const rows = answersContainer.querySelectorAll('.answer-row');
+    rows.forEach(function (row, index) {
+        const correct = row.querySelector('input[type="radio"]');
+        const answer = row.querySelector('input[type="text"]');
+        const remove = row.querySelector('button');
+
+        correct.value = index;
+        correct.required = index === 0;
+        answer.name = `answer[${index}]`;
+        answer.placeholder = `Answer ${index + 1}`;
+        remove.disabled = rows.length <= 2 || inputType.value === 'true-false';
+    });
+
+    addAnswerButton.disabled =
+        inputType.value === 'true-false' || rows.length >= 6;
+}
+
+function renderAnswers() {
+    answersContainer.replaceChildren();
+
+    if (inputType.value === 'true-false') {
+        answersContainer.append(
+            createAnswerRow(0, 'True'),
+            createAnswerRow(1, 'False')
+        );
+    } else {
+        answersContainer.append(
+            createAnswerRow(0),
+            createAnswerRow(1)
+        );
+    }
+
+    renumberAnswers();
+}
+
+if (inputType && answersContainer && addAnswerButton) {
+    inputType.addEventListener('change', renderAnswers);
+    addAnswerButton.addEventListener('click', function () {
+        const rows = answersContainer.querySelectorAll('.answer-row');
+        if (inputType.value !== 'true-false' && rows.length < 6) {
+            answersContainer.appendChild(createAnswerRow(rows.length));
+            renumberAnswers();
+        }
+    });
+
+    renderAnswers();
+}
+</script>
 
 </body>
 </html>

@@ -5,163 +5,95 @@
     //   else, it sends to signin.php
     require __DIR__ . '/auth.php';
     requireTeacher('dashboard');
+    require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
-
-
-    // Placeholder DATE info until quiz/classroom metadata is stored for real.
-    // Later: read created/edited from the JSON or db.
-    function getFileDates($filepath)
+    if (!isset($_SESSION['user_id']))
     {
-        $dummyCreated = '2026-09-01';
-        $dummyEdited = '2026-09-20';
-
-
-
-        if (is_file($filepath))
-        {
-            $mtime = filemtime($filepath);
-
-
-
-            if ($mtime !== false)
-            {
-                $dummyEdited = date('Y-m-d', $mtime);
-            }
-        }
-
-
-
-        return [
-            'created' => $dummyCreated,
-            'edited' => $dummyEdited
-        ];
-    }
-
-
-
-    $path = __DIR__ . '/quizzes/*.json';
-    $files = glob($path);
-
-
-
-    if($files === false)
-    {
-        $files = [];
+        header('Location: signin.php');
+        exit();
     }
 
 
 
     $quizzes = [];
+    $databaseConnection = hum_conn_no_login();
+        $quizSql = '
+            SELECT
+                "QUIZ_ID",
+                "TITLE",
+                TO_CHAR("CREATED_AT", \'YYYY-MM-DD\') AS "CREATED_DATE"
+            FROM "QUIZ"
+            WHERE "CREATOR_ID" = :creator_id
+            ORDER BY "TITLE"
+        ';
+        $quizStatement = oci_parse($databaseConnection, $quizSql);
+        $creatorId = $_SESSION['user_id'];
+        oci_bind_by_name($quizStatement, ':creator_id', $creatorId);
 
-
-
-    foreach ($files as $filepath)
-    {
-        $slug = basename($filepath, '.json');
-
-
-
-        if (!preg_match('/^[A-Za-z0-9_-]+$/', $slug))
+        if (oci_execute($quizStatement))
         {
-            continue;
+            while ($quiz = oci_fetch_assoc($quizStatement))
+            {
+                $quizzes[] = [
+                    'name' => $quiz['TITLE'],
+                    'created' => $quiz['CREATED_DATE'],
+                    'edited' => $quiz['CREATED_DATE']
+                ];
+            }
         }
 
-
-
-        $dates = getFileDates($filepath);
-
-
-
-        $quizzes[] = [
-            'slug' => $slug,
-            'name' => str_replace('_', ' ', $slug),
-            'created' => $dates['created'],
-            'edited' => $dates['edited']
-        ];
-    }
-
-
-
-    $classroomPath = __DIR__ . '/classrooms/*.json';
-    $classroomFiles = glob($classroomPath);
-
-
-
-    if($classroomFiles === false)
-    {
-        $classroomFiles = [];
-    }
+        oci_free_statement($quizStatement);
+        oci_close($databaseConnection);
 
 
 
     $classrooms = [];
 
+    $classroomConnection = hum_conn_no_login();
+    $classroomSql = '
+        SELECT
+            c."CLASSROOM_ID",
+            c."CLASSROOM_NAME",
+            c."PASSCODE",
+            TO_CHAR(c."CREATED_AT", \'YYYY-MM-DD\') AS "CREATED_DATE",
+            COUNT(student_membership."USER_ID") AS "STUDENT_COUNT"
+        FROM "CLASSROOM" c
+        JOIN "CLASSROOM_MEMBERSHIP" owner_membership
+          ON owner_membership."CLASSROOM_ID" = c."CLASSROOM_ID"
+         AND owner_membership."USER_ID" = :creator_id
+         AND owner_membership."ROLE" = \'teacher\'
+        LEFT JOIN "CLASSROOM_MEMBERSHIP" student_membership
+          ON student_membership."CLASSROOM_ID" = c."CLASSROOM_ID"
+         AND student_membership."ROLE" = \'student\'
+        GROUP BY
+            c."CLASSROOM_ID",
+            c."CLASSROOM_NAME",
+            c."PASSCODE",
+            c."CREATED_AT"
+        ORDER BY c."CLASSROOM_NAME"
+    ';
+    $classroomStatement = oci_parse($classroomConnection, $classroomSql);
+    $creatorId = $_SESSION['user_id'];
+    oci_bind_by_name($classroomStatement, ':creator_id', $creatorId);
 
-
-    foreach ($classroomFiles as $filepath)
+    if (oci_execute($classroomStatement))
     {
-        $slug = basename($filepath, '.json');
-
-
-
-        if (!preg_match('/^[A-Za-z0-9_-]+$/', $slug))
+        while ($classroom = oci_fetch_assoc($classroomStatement))
         {
-            continue;
+            $classrooms[] = [
+                'id' => $classroom['CLASSROOM_ID'],
+                'name' => $classroom['CLASSROOM_NAME'],
+                'students' => $classroom['STUDENT_COUNT'],
+                'passcode' => $classroom['PASSCODE'] !== null &&
+                    $classroom['PASSCODE'] !== '',
+                'created' => $classroom['CREATED_DATE'],
+                'edited' => $classroom['CREATED_DATE']
+            ];
         }
-
-
-
-        $dates = getFileDates($filepath);
-        $studentCount = 0;
-        $hasPasscode = false;
-        $name = str_replace('_', ' ', $slug);
-
-
-
-        $raw = file_get_contents($filepath);
-
-
-
-        if ($raw !== false)
-        {
-            $data = json_decode($raw, true);
-
-
-
-            if (is_array($data))
-            {
-                if (!empty($data['name']))
-                {
-                    $name = $data['name'];
-                }
-
-
-
-                if (!empty($data['passcode']))
-                {
-                    $hasPasscode = true;
-                }
-
-
-
-                if (isset($data['students']) && is_array($data['students']))
-                {
-                    $studentCount = count($data['students']);
-                }
-            }
-        }
-
-
-
-        $classrooms[] = [
-            'slug' => $slug,
-            'name' => $name,
-            'students' => $studentCount,
-            'passcode' => $hasPasscode,
-            'created' => $dates['created'],
-            'edited' => $dates['edited']
-        ];
     }
+
+    oci_free_statement($classroomStatement);
+    oci_close($classroomConnection);
 ?>
 
 
@@ -225,7 +157,11 @@
                     <td><?= htmlspecialchars($classroom['edited'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
                         <form method="get" action="classroom.php">
-                            <input type="hidden" name="slug" value="<?= htmlspecialchars($classroom['slug'], ENT_QUOTES, 'UTF-8') ?>" />
+                            <?php if (isset($classroom['id'])): ?>
+                                <input type="hidden" name="id" value="<?= htmlspecialchars($classroom['id'], ENT_QUOTES, 'UTF-8') ?>" />
+                            <?php else: ?>
+                                <input type="hidden" name="slug" value="<?= htmlspecialchars($classroom['slug'], ENT_QUOTES, 'UTF-8') ?>" />
+                            <?php endif; ?>
                             <input type="submit" value="View" />
                         </form>
                     </td>

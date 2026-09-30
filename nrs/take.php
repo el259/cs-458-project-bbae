@@ -5,10 +5,33 @@ session_start();
 //   else, it sends to signin.php
 require __DIR__ . '/auth.php';
 requireAccount('assignment');
+require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
-if (isset($_SESSION['quizName'])) {
-    unset($_SESSION['quizName']);
+unset($_SESSION['quizId']);
+
+$quizzes = [];
+$error = '';
+$databaseConnection = hum_conn_no_login();
+$sql = '
+    SELECT "QUIZ_ID", "TITLE"
+    FROM "QUIZ"
+    ORDER BY "TITLE"
+';
+$statement = oci_parse($databaseConnection, $sql);
+
+if (!oci_execute($statement)) {
+    $error = 'Unable to load quizzes.';
+} else {
+    while ($quiz = oci_fetch_assoc($statement)) {
+        $quizzes[] = [
+            'id' => $quiz['QUIZ_ID'],
+            'name' => $quiz['TITLE']
+        ];
+    }
 }
+
+oci_free_statement($statement);
+oci_close($databaseConnection);
 ?>
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
@@ -29,19 +52,11 @@ if (isset($_SESSION['quizName'])) {
 <body>
 <?php require __DIR__ . '/header.php'; ?>
 
-<?php
-$path = __DIR__ . '/quizzes/*.json';
-$files = glob($path);
-
-if ($files === false || count($files) <= 0) {
-?>
+<?php if ($error !== ''): ?>
+    <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+<?php elseif (count($quizzes) === 0): ?>
     <p>No quizzes available. Try again later.</p>
-<?php
-} else {
-    for ($i = 0; $i < count($files); $i++) {
-        $files[$i] = basename($files[$i], '.json');
-    }
-?>
+<?php else: ?>
     <p>Choose a quiz</p>
 
     <form method="post" action="quiz.php">
@@ -53,29 +68,20 @@ if ($files === false || count($files) <= 0) {
                 </tr>
             </thead>
             <tbody>
-<?php
-    foreach ($files as $file) {
-        if (!preg_match('/^[A-Za-z0-9_-]+$/', $file)) {
-            continue;
-        }
-?>
+<?php foreach ($quizzes as $quiz): ?>
                 <tr>
-                    <td><?= htmlspecialchars($file, ENT_QUOTES, 'UTF-8') ?></td>
+                    <td><?= htmlspecialchars($quiz['name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
-                        <button type="submit" name="quizName" value="<?= htmlspecialchars($file, ENT_QUOTES, 'UTF-8') ?>">
+                        <button type="submit" name="quizId" value="<?= htmlspecialchars($quiz['id'], ENT_QUOTES, 'UTF-8') ?>">
                             Take
                         </button>
                     </td>
                 </tr>
-<?php
-    }
-?>
+<?php endforeach; ?>
             </tbody>
         </table>
     </form>
-<?php
-}
-?>
+<?php endif; ?>
 
 <?php require __DIR__ . '/footer.php'; ?>
 

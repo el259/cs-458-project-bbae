@@ -6,3 +6,17 @@ table {
     margin-left: 2rem;
     margin-right: 2rem;
 }
+
+.quiz-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.quiz-actions form {
+    display: inline-block;
+    margin: 0;
+    width: auto;
+}

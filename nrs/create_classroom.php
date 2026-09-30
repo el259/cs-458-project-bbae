@@ -225,10 +225,10 @@ exit();
 
 
 <head>
-<title>HumGlot</title>
-<meta charset="utf-8" />
-<link rel="stylesheet" href="global.css" />
-<link rel="stylesheet" href="create_classroom.css" />
+    <title>HumGlot</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="create_classroom.css" />
 </head>
 
 
@@ -257,7 +257,7 @@ if ($error !== '')
 
 <!-- Go back to teacher page -->
 <form method="post" action="create_classroom.php">
-<input type="submit" name="cancelClassroom" value="Cancel" />
+    <input type="submit" name="cancelClassroom" value="Cancel" />
 </form>
 
 
@@ -274,24 +274,23 @@ if ($_SESSION['classroom']['name'] == '')
 
 
 <h2>1. Name Your Classroom</h2>
-<form method="post" action="create_classroom.php">
-<label for="classroomName">Classroom Name</label>
-<input
-type="text"
-name="classroomName"
-id="classroomName"
-required="required"
-/>
+    <form method="post" action="create_classroom.php">
+        <label for="classroomName">Classroom Name</label>
 
+        <input
+            type="text"
+            name="classroomName"
+            id="classroomName"
+            required="required"
+        />
 
-<input
-type="submit"
-name="setClassroomName"
-value="Continue"
-/>
+        <input
+            type="submit"
+            name="setClassroomName"
+            value="Continue"
+        />
 
-
-</form>
+    </form>
 
 
 <?php
@@ -312,22 +311,20 @@ else
 <p>Students can join this classroom with a passcode. Leave blank if you only want to add students yourself.</p>
 
 
-
 <form method="post" action="create_classroom.php">
-<label for="passcode">Passcode</label>
-<input
-type="text"
-name="passcode"
-id="passcode"
-value="<?= htmlspecialchars($_SESSION['classroom']['passcode'], ENT_QUOTES, 'UTF-8') ?>"
-/>
+    <label for="passcode">Passcode</label>
+    <input
+    type="text"
+    name="passcode"
+    id="passcode"
+    value="<?= htmlspecialchars($_SESSION['classroom']['passcode'], ENT_QUOTES, 'UTF-8') ?>"
+    />
 
-
-<input
-type="submit"
-name="setPasscode"
-value="Save Passcode"
-/>
+    <input
+    type="submit"
+    name="setPasscode"
+    value="Save Passcode"
+    />
 </form>
 
 
@@ -354,26 +351,22 @@ if (count($_SESSION['classroom']['students']) > 0)
 <h3>Students</h3>
 
 
-
 <?php
 foreach ($_SESSION['classroom']['students'] as $index => $student)
         {
 ?>
 
 
-
 <div>
-<p>
-<strong><?= ($index + 1) ?>. </strong>
-<?= htmlspecialchars($student, ENT_QUOTES, 'UTF-8') ?>
-</p>
+    <p>
+    <strong><?= ($index + 1) ?>. </strong>
+    <?= htmlspecialchars($student, ENT_QUOTES, 'UTF-8') ?>
+    </p>
 
-
-
-<form method="post" action="create_classroom.php">
-<input type="hidden" name="removeIndex" value="<?= $index ?>" />
-<input type="submit" name="removeStudent" value="Remove" />
-</form>
+    <form method="post" action="create_classroom.php">
+        <input type="hidden" name="removeIndex" value="<?= $index ?>" />
+        <input type="submit" name="removeStudent" value="Remove" />
+    </form>
 </div>
 
 
@@ -391,36 +384,27 @@ foreach ($_SESSION['classroom']['students'] as $index => $student)
 
 <h2>Add a Student</h2>
 
-
-
 <form method="post" action="create_classroom.php">
 
+    <div>
+        <label for="student"> Student Name </label>
+
+        <input
+        type="text"
+        name="student"
+        id="student"
+        required="required"
+        />
+    </div>
 
 
-<div>
-<label for="student"> Student Name </label>
-
-
-
-<input
-type="text"
-name="student"
-id="student"
-required="required"
-/>
-</div>
-
-
-
-<div>
-<input
-type="submit"
-name="addStudent"
-value="Add Student"
-/>
-</div>
-
-
+    <div>
+        <input
+        type="submit"
+        name="addStudent"
+        value="Add Student"
+        />
+    </div>
 
 </form>
 
@@ -436,15 +420,11 @@ if ($_SESSION['classroom']['passcode'] !== '' || count($_SESSION['classroom']['s
 
 <form method="post" action="create_classroom.php">
 
-
-
-<input
-type="submit"
-name="createClassroom"
-value="Create Classroom"
-/>
-
-
+    <input
+    type="submit"
+    name="createClassroom"
+    value="Create Classroom"
+    />
 
 </form>
 

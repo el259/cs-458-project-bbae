@@ -173,6 +173,9 @@
                 }
                 ?>
 
+                <label for="acc">Password (Placeholder, Disabled)</label>
+                <input type="password" name="account" id="acc" required="required" placeholder="Enter your password" disabled />
+
                 <input type="submit" name="login" value="Log In" />
                 <input type="submit" name="signup" value="Sign Up" />
             </form>

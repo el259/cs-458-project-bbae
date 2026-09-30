@@ -75,6 +75,7 @@ session_start();
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="global.css" />
+    <link rel="stylesheet" href="classroom.css" />
 </head>
 
 
@@ -82,18 +83,11 @@ session_start();
 <body>
 <?php require __DIR__ . '/header.php'; ?>
 
-
-
-    <form method="get" action="index.php">
-        <input type="submit" value="Go Back" />
-    </form>
-
-
 <?php
     if ($error !== '')
     {
     ?>
-    <h1>Classroom</h1>
+    <h2>Classroom</h2>
     <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
     <?php
         }
@@ -101,9 +95,7 @@ session_start();
         {
         ?>
 
-
-
-    <h1><?= htmlspecialchars($classroom['name'], ENT_QUOTES, 'UTF-8') ?></h1>
+    <h2><?= htmlspecialchars($classroom['name'], ENT_QUOTES, 'UTF-8') ?></h2>
 
 
 
@@ -127,36 +119,44 @@ session_start();
 
 
 
-<h2>Students</h2>
+<h3>Students</h3>
 
 
-<?php
-    if (count($classroom['students']) <= 0)
-        {
+    <?php
+    if (count($classroom['students']) <= 0) {
     ?>
         <p>No students yet.</p>
     <?php
-        }
-    else
-        {
+    } else {
     ?>
-    <ol>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student</th>
+                </tr>
+            </thead>
+            <tbody>
     <?php
-    foreach ($classroom['students'] as $student)
-            {
+                $i = 1;
+                foreach ($classroom['students'] as $student) {
     ?>
-    <li><?= htmlspecialchars($student, ENT_QUOTES, 'UTF-8') ?></li>
+                <tr>
+                    <td><?= $i++ ?></td>
+                    <td><?= htmlspecialchars($student, ENT_QUOTES, 'UTF-8') ?></td>
+                </tr>
     <?php
-            }
+                }
     ?>
-    </ol>
+            </tbody>
+        </table>
     <?php
-        }
+    }
     ?>
 
 
 
-<h2>Assignments</h2>
+<h3>Assignments</h3>
 
 
     <?php
@@ -187,6 +187,10 @@ session_start();
     <?php
     }
     ?>
+
+    <form method="get" action="teacher.php">
+        <input type="submit" value="Go Back" />
+    </form>
 
     <?php require __DIR__ . '/footer.php'; ?>
 

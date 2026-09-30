@@ -205,10 +205,10 @@
             <thead>
             <tr>
                 <th>Classroom name</th>
-                <th>Students</th>
-                <th>Passcode</th>
-                <th>Date created</th>
-                <th>Last edited</th>
+                    <th>Students</th>
+                    <th>Passcode</th>
+                    <th>Date created</th>
+                    <th>Last edited</th>
                 <th></th>
             </tr>
             </thead>
@@ -239,9 +239,22 @@
         }
         ?>
 
-        <form method="get" action="create_classroom.php">
-            <input type="submit" value="Make classroom" />
-        </form>
+        <div class="quiz-actions">
+
+            <form method="get" action="create_classroom.php">
+                <input type="submit" value="Make classroom" />
+            </form>
+
+            <form method="get" action="404.php">
+                <input type="submit" value="Archive classroom" />
+            </form>
+
+            <form method="get" action="404.php">
+                <input type="submit" value="Delete classroom" />
+            </form>
+
+        </div>
+        <br />
 
         <h2>Your quizzes</h2>
 
@@ -283,15 +296,15 @@
         ?>
 
 
+    <div class="quiz-actions">
         <form method="get" action="create.php">
             <input type="submit" value="Create a quiz" />
         </form>
 
-
-
         <form method="get" action="take.php">
             <input type="submit" value="Take a quiz" />
         </form>
+    </div>
 
 
         <form method="post" action="signin.php">

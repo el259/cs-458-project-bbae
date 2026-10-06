@@ -201,7 +201,11 @@ if (isset($_POST['addQuestion']))
 
     if ($saved !== null)
     {
-        if ($replaceIndex >= 0 && isset($_SESSION['quiz']['questions'][$replaceIndex]))
+        $isEdit = $replaceIndex >= 0
+            && $replaceIndex === intval($_SESSION['quiz']['editing'] ?? -1)
+            && isset($_SESSION['quiz']['questions'][$replaceIndex]);
+
+        if ($isEdit)
         {
             $_SESSION['quiz']['questions'][$replaceIndex] = $saved;
         }
@@ -220,6 +224,53 @@ if (isset($_POST['addQuestion']))
 // Create the quiz
 if (isset($_POST['createQuiz']))
 {
+    $question = trim($_POST['question'] ?? '');
+    $inputType = $_POST['inputType'] ?? 'multiple-choice';
+    $postedAnswers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
+    $correct = intval($_POST['correct'] ?? -1);
+    $fillAnswer = trim($_POST['fillAnswer'] ?? '');
+    $ignoreDiacritics = isset($_POST['ignoreDiacritics']);
+    $allowTypos = isset($_POST['allowTypos']);
+
+    $answers = [];
+    foreach ($postedAnswers as $answer)
+    {
+        $answers[] = trim((string) $answer);
+    }
+
+    $pending = null;
+
+    if ($question !== '' && $inputType === 'fill-in' && $fillAnswer !== '')
+    {
+        $pending = [
+            'question' => $question,
+            'inputType' => 'fill-in',
+            'answer' => $fillAnswer,
+            'ignoreDiacritics' => $ignoreDiacritics,
+            'allowTypos' => $allowTypos
+        ];
+    }
+    else if (
+        $question !== ''
+        && ($inputType === 'multiple-choice' || $inputType === 'true-false')
+        && count($answers) >= 2
+        && !in_array('', $answers, true)
+        && array_key_exists($correct, $answers)
+    )
+    {
+        $pending = [
+            'question' => $question,
+            'inputType' => $inputType,
+            'answers' => $answers,
+            'correct' => $correct
+        ];
+    }
+
+    if ($pending !== null)
+    {
+        $_SESSION['quiz']['questions'][] = $pending;
+    }
+
     $quizName = trim($_SESSION['quiz']['name']);
     $questions = $_SESSION['quiz']['questions'];
 
@@ -251,10 +302,12 @@ if (isset($_POST['createQuiz']))
         else
         {
             $storedQuiz = [
-                'name' => $_SESSION['quiz']['name'],
-                'questions' => $_SESSION['quiz']['questions']
+                'name' => $quizName,
+                'questions' => $questions
             ];
             $quizJson = json_encode($storedQuiz, JSON_UNESCAPED_UNICODE);
+            $description = (string) count($questions);
+
             if ($quizJson === false)
             {
                 $error = 'Unable to format the quiz data.';
@@ -264,7 +317,7 @@ if (isset($_POST['createQuiz']))
                 $insertSql = '
                     INSERT INTO "QUIZ" (
                         "CREATOR_ID", "TITLE", "DESCRIPTION", "QUIZ_JSON"
-                    ) VALUES (:creator_id, :title, NULL, :quiz_json)
+                    ) VALUES (:creator_id, :title, :description, :quiz_json)
                 ';
                 $insertStatement = oci_parse($databaseConnection, $insertSql);
                 $quizClob = oci_new_descriptor($databaseConnection, OCI_D_LOB);
@@ -277,6 +330,7 @@ if (isset($_POST['createQuiz']))
                 {
                     oci_bind_by_name($insertStatement, ':creator_id', $creatorId);
                     oci_bind_by_name($insertStatement, ':title', $quizName);
+                    oci_bind_by_name($insertStatement, ':description', $description);
                     oci_bind_by_name($insertStatement, ':quiz_json', $quizClob, -1, OCI_B_CLOB);
                     $quizClob->writeTemporary($quizJson, OCI_TEMP_CLOB);
 
@@ -589,7 +643,7 @@ if (count($_SESSION['quiz']['questions']) > 0)
 <input
     type="submit"
     name="createQuiz"
-    value="Create Quiz"
+    value="Create Quiz (<?= count($_SESSION['quiz']['questions']) ?> questions)"
 />
 
 

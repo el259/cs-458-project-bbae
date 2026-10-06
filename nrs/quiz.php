@@ -158,6 +158,8 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
         <p>Percent: <?= htmlspecialchars((string) $percent, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
 
+    <p>IGNORE: Loaded <?= count($questions) ?> questions, <?= strlen($jsonString) ?> bytes.</p>
+
     <form method="post" action="quiz.php">
         <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />
         <?php foreach ($questions as $questionIndex => $question): ?>

@@ -18,13 +18,26 @@ if (!isset($_SESSION['user_id']))
 if (!isset($_SESSION['quiz']))
 {
     $_SESSION['quiz'] = [
-'name' => '',
-'questions' => []
+        'name' => '',
+        'questions' => [],
+        'editing' => -1
     ];
+}
+
+if (!isset($_SESSION['quiz']['editing']))
+{
+    $_SESSION['quiz']['editing'] = -1;
 }
 
 
 $error = '';
+$editingIndex = intval($_SESSION['quiz']['editing']);
+$editingQuestion = null;
+
+if ($editingIndex >= 0 && isset($_SESSION['quiz']['questions'][$editingIndex]))
+{
+    $editingQuestion = $_SESSION['quiz']['questions'][$editingIndex];
+}
 
 
 // Save quiz name
@@ -42,19 +55,84 @@ if (isset($_POST['setQuizName']))
         $_SESSION['quiz']['name'] = $quizName;
 
 
-header("Location: create.php");
-exit();
+        header("Location: create.php");
+        exit();
     }
 }
 
 
-// Add a question
+// Go back to the quiz name
+if (isset($_POST['editQuizName']))
+{
+    $_SESSION['quiz']['name'] = '';
+    $_SESSION['quiz']['editing'] = -1;
+    header("Location: create.php");
+    exit();
+}
+
+
+// Reopen a question that was already added
+if (isset($_POST['editQuestion']))
+{
+    $index = intval($_POST['editQuestion']);
+
+    if (!isset($_SESSION['quiz']['questions'][$index]))
+    {
+        $error = 'That question could not be found.';
+    }
+    else
+    {
+        $_SESSION['quiz']['editing'] = $index;
+        header("Location: create.php");
+        exit();
+    }
+}
+
+
+// Drop a question and stay on the list
+if (isset($_POST['removeQuestion']))
+{
+    $index = intval($_POST['removeQuestion']);
+
+    if (isset($_SESSION['quiz']['questions'][$index]))
+    {
+        array_splice($_SESSION['quiz']['questions'], $index, 1);
+
+        if ($_SESSION['quiz']['editing'] === $index)
+        {
+            $_SESSION['quiz']['editing'] = -1;
+        }
+        else if ($_SESSION['quiz']['editing'] > $index)
+        {
+            $_SESSION['quiz']['editing']--;
+        }
+    }
+
+    header("Location: create.php");
+    exit();
+}
+
+
+// Leave the form without writing the open question
+if (isset($_POST['cancelEdit']))
+{
+    $_SESSION['quiz']['editing'] = -1;
+    header("Location: create.php");
+    exit();
+}
+
+
+// Add a question, or replace the one being edited
 if (isset($_POST['addQuestion']))
 {
     $question = trim($_POST['question'] ?? '');
     $inputType = $_POST['inputType'] ?? 'multiple-choice';
     $postedAnswers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
     $correct = intval($_POST['correct'] ?? -1);
+    $fillAnswer = trim($_POST['fillAnswer'] ?? '');
+    $ignoreDiacritics = isset($_POST['ignoreDiacritics']);
+    $allowTypos = isset($_POST['allowTypos']);
+    $replaceIndex = intval($_POST['editing'] ?? -1);
 
 
     $answers = [];
@@ -64,9 +142,28 @@ if (isset($_POST['addQuestion']))
     }
 
 
+    $saved = null;
+
     if ($question === '')
     {
         $error = 'Please enter a question.';
+    }
+    else if ($inputType === 'fill-in')
+    {
+        if ($fillAnswer === '')
+        {
+            $error = 'Please enter the correct answer.';
+        }
+        else
+        {
+            $saved = [
+                'question' => $question,
+                'inputType' => 'fill-in',
+                'answer' => $fillAnswer,
+                'ignoreDiacritics' => $ignoreDiacritics,
+                'allowTypos' => $allowTypos
+            ];
+        }
     }
     else if ($inputType !== 'multiple-choice' && $inputType !== 'true-false')
     {
@@ -94,16 +191,28 @@ if (isset($_POST['addQuestion']))
     }
     else
     {
-        $_SESSION['quiz']['questions'][] = [
-'question' => $question,
-'inputType' => $inputType,
-'answers' => $answers,
-'correct' => $correct
+        $saved = [
+            'question' => $question,
+            'inputType' => $inputType,
+            'answers' => $answers,
+            'correct' => $correct
         ];
+    }
 
+    if ($saved !== null)
+    {
+        if ($replaceIndex >= 0 && isset($_SESSION['quiz']['questions'][$replaceIndex]))
+        {
+            $_SESSION['quiz']['questions'][$replaceIndex] = $saved;
+        }
+        else
+        {
+            $_SESSION['quiz']['questions'][] = $saved;
+        }
 
-header("Location: create.php");
-exit();
+        $_SESSION['quiz']['editing'] = -1;
+        header("Location: create.php");
+        exit();
     }
 }
 
@@ -141,7 +250,11 @@ if (isset($_POST['createQuiz']))
         }
         else
         {
-            $quizJson = json_encode($_SESSION['quiz'], JSON_UNESCAPED_UNICODE);
+            $storedQuiz = [
+                'name' => $_SESSION['quiz']['name'],
+                'questions' => $_SESSION['quiz']['questions']
+            ];
+            $quizJson = json_encode($storedQuiz, JSON_UNESCAPED_UNICODE);
             if ($quizJson === false)
             {
                 $error = 'Unable to format the quiz data.';
@@ -199,11 +312,11 @@ if (isset($_POST['createQuiz']))
 
 // Cancel quiz creation
 if (isset($_POST['cancelQuiz']))
-    {
-        unset($_SESSION['quiz']);
-        header("Location: teacher.php");
-        exit();
-    }
+{
+    unset($_SESSION['quiz']);
+    header("Location: teacher.php");
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -283,6 +396,10 @@ else
 
 <h2><?= htmlspecialchars($_SESSION['quiz']['name'], ENT_QUOTES, 'UTF-8') ?></h2>
 
+<form method="post" action="create.php">
+    <input type="submit" name="editQuizName" value="Back to quiz name" />
+</form>
+
 <?php
 
 
@@ -309,6 +426,32 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
     <p>
     Input Type: <?= htmlspecialchars($question['inputType'], ENT_QUOTES, 'UTF-8') ?>
     </p>
+    <?php
+    if ($question['inputType'] === 'fill-in')
+    {
+    ?>
+    <p>
+        Answer: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?>
+        <?php
+        if (!empty($question['ignoreDiacritics']))
+        {
+        ?>
+        <strong> (accents optional)</strong>
+        <?php
+        }
+        if (!empty($question['allowTypos']))
+        {
+        ?>
+        <strong> (typos allowed)</strong>
+        <?php
+        }
+        ?>
+    </p>
+    <?php
+    }
+    else
+    {
+    ?>
     <ol>
         <?php
         foreach ($question['answers'] as $answerIndex => $answer)
@@ -329,6 +472,14 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
                     }
         ?>
     </ol>
+    <?php
+    }
+    ?>
+
+    <form method="post" action="create.php">
+        <button type="submit" name="editQuestion" value="<?= $index ?>">Edit</button>
+        <button type="submit" name="removeQuestion" value="<?= $index ?>">Remove</button>
+    </form>
 
 
 </div>
@@ -340,13 +491,14 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 ?>
 
 
-<!-- STEP 2: Add another question -->
+<!-- STEP 2: Add another question, or edit the one that was reopened -->
 
 
-<h2>Add a Question</h2>
+<h2><?= $editingQuestion === null ? 'Add a Question' : 'Edit Question ' . ($editingIndex + 1) ?></h2>
 
 
 <form method="post" action="create.php">
+<input type="hidden" name="editing" value="<?= $editingIndex ?>" />
 
 
 <div>
@@ -358,6 +510,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
     name="question"
     id="question"
     required="required"
+    value="<?= $editingQuestion === null ? '' : htmlspecialchars($editingQuestion['question'], ENT_QUOTES, 'UTF-8') ?>"
     />
 </div>
 
@@ -367,30 +520,60 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 
 
     <select name="inputType" id="inputType">
-        <option value="multiple-choice"> Multiple Choice </option>
-        <option value="true-false"> True / False </option>
+        <option value="multiple-choice" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'multiple-choice' ? 'selected="selected"' : '' ?>> Multiple Choice </option>
+        <option value="true-false" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'true-false' ? 'selected="selected"' : '' ?>> True / False </option>
+        <option value="fill-in" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'fill-in' ? 'selected="selected"' : '' ?>> Fill in the blank </option>
     </select>
 </div>
 
 
-<div>
+<div id="choiceFields">
     <p>Answers</p>
     <div id="answers"></div>
+    <button type="button" id="addAnswer">Add Answer</button>
 </div>
 
-<button type="button" id="addAnswer">Add Answer</button>
+
+<div id="fillFields">
+    <label for="fillAnswer">Correct answer</label>
+    <input
+        type="text"
+        name="fillAnswer"
+        id="fillAnswer"
+        value="<?= $editingQuestion !== null && $editingQuestion['inputType'] === 'fill-in' ? htmlspecialchars($editingQuestion['answer'], ENT_QUOTES, 'UTF-8') : '' ?>"
+    />
+    <label>
+        <input type="checkbox" name="ignoreDiacritics" <?= $editingQuestion !== null && !empty($editingQuestion['ignoreDiacritics']) ? 'checked="checked"' : '' ?> />
+        Accept missing accents
+    </label>
+    <label>
+        <input type="checkbox" name="allowTypos" <?= $editingQuestion !== null && !empty($editingQuestion['allowTypos']) ? 'checked="checked"' : '' ?> />
+        Accept a small typo
+    </label>
+</div>
 
 
     <div>
         <input
         type="submit"
         name="addQuestion"
-        value="Add Question"
+        value="<?= $editingQuestion === null ? 'Add Question' : 'Save Question' ?>"
         />
     </div>
 
 
 </form>
+
+<?php
+if ($editingQuestion !== null)
+{
+?>
+<form method="post" action="create.php">
+    <input type="submit" name="cancelEdit" value="Back to new question" />
+</form>
+<?php
+}
+?>
 
 
 <?php
@@ -424,8 +607,12 @@ if (count($_SESSION['quiz']['questions']) > 0)
 const inputType = document.getElementById('inputType');
 const answersContainer = document.getElementById('answers');
 const addAnswerButton = document.getElementById('addAnswer');
+const choiceFields = document.getElementById('choiceFields');
+const fillFields = document.getElementById('fillFields');
+const fillAnswer = document.getElementById('fillAnswer');
+const existingQuestion = <?= json_encode($editingQuestion, JSON_UNESCAPED_UNICODE) ?>;
 
-function createAnswerRow(index, value = '') {
+function createAnswerRow(index, value = '', checked = false) {
     const row = document.createElement('div');
     const correct = document.createElement('input');
     const answer = document.createElement('input');
@@ -437,6 +624,7 @@ function createAnswerRow(index, value = '') {
     correct.name = 'correct';
     correct.value = index;
     correct.required = index === 0;
+    correct.checked = checked;
 
     answer.type = 'text';
     answer.name = `answer[${index}]`;
@@ -474,13 +662,31 @@ function renumberAnswers() {
 }
 
 function renderAnswers() {
+    const isFill = inputType.value === 'fill-in';
+
+    choiceFields.hidden = isFill;
+    fillFields.hidden = !isFill;
+    fillAnswer.required = isFill;
+
     answersContainer.replaceChildren();
 
+    if (isFill) {
+        addAnswerButton.disabled = true;
+        return;
+    }
+
     if (inputType.value === 'true-false') {
+        const saved = existingQuestion && existingQuestion.inputType === 'true-false'
+            ? existingQuestion
+            : null;
         answersContainer.append(
-            createAnswerRow(0, 'True'),
-            createAnswerRow(1, 'False')
+            createAnswerRow(0, saved ? saved.answers[0] : 'True', saved ? saved.correct === 0 : false),
+            createAnswerRow(1, saved ? saved.answers[1] : 'False', saved ? saved.correct === 1 : false)
         );
+    } else if (existingQuestion && existingQuestion.inputType === 'multiple-choice' && inputType.value === 'multiple-choice') {
+        existingQuestion.answers.forEach(function (answer, index) {
+            answersContainer.appendChild(createAnswerRow(index, answer, existingQuestion.correct === index));
+        });
     } else {
         answersContainer.append(
             createAnswerRow(0),
@@ -495,7 +701,7 @@ if (inputType && answersContainer && addAnswerButton) {
     inputType.addEventListener('change', renderAnswers);
     addAnswerButton.addEventListener('click', function () {
         const rows = answersContainer.querySelectorAll('.answer-row');
-        if (inputType.value !== 'true-false' && rows.length < 6) {
+        if (inputType.value !== 'true-false' && inputType.value !== 'fill-in' && rows.length < 6) {
             answersContainer.appendChild(createAnswerRow(rows.length));
             renumberAnswers();
         }

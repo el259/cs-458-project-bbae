@@ -1,6 +1,7 @@
 <?php
 session_start();
 require __DIR__ . '/auth.php';
+require_once __DIR__ . '/experimental-feats/fuzzy-checker.php';
 requireAccount('assignment');
 require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
@@ -43,8 +44,14 @@ if ($quizId <= 0) {
                 $error = 'Quiz data is invalid.';
             } else {
                 foreach ($data['questions'] as $index => $rawQuestion) {
+                    $inputType = 'multiple-choice';
+                    $fillAnswer = '';
+                    $ignoreDiacritics = false;
+                    $allowTypos = false;
+
                     if (is_array($rawQuestion) && isset($rawQuestion['question'])) {
                         $questionText = $rawQuestion['question'];
+                        $inputType = $rawQuestion['inputType'] ?? 'multiple-choice';
                         $optionList = isset($rawQuestion['answers']) &&
                             is_array($rawQuestion['answers'])
                             ? $rawQuestion['answers']
@@ -52,6 +59,11 @@ if ($quizId <= 0) {
                         $correctIndex = isset($rawQuestion['correct'])
                             ? intval($rawQuestion['correct'])
                             : -1;
+                        $fillAnswer = isset($rawQuestion['answer'])
+                            ? (string) $rawQuestion['answer']
+                            : '';
+                        $ignoreDiacritics = !empty($rawQuestion['ignoreDiacritics']);
+                        $allowTypos = !empty($rawQuestion['allowTypos']);
                     } else {
                         $questionText = (string) $rawQuestion;
                         $optionList = isset($data['answers'][$index]) &&
@@ -74,8 +86,13 @@ if ($quizId <= 0) {
 
                     $questions[] = [
                         'question' => $questionText,
+                        'inputType' => $inputType,
                         'answers' => $optionList,
-                        'correct' => $correctIndex
+                        'correct' => $correctIndex,
+                        'answer' => $fillAnswer,
+                        'ignoreDiacritics' => $ignoreDiacritics,
+                        'allowTypos' => $allowTypos,
+                        'verdict' => 'wrong'
                     ];
                 }
             }
@@ -92,9 +109,24 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
     if (count($questions) > 0 && count($guesses) === count($questions)) {
         $showScore = true;
         foreach ($questions as $index => $question) {
-            if (isset($guesses[$index]) &&
-                intval($guesses[$index]) === intval($question['correct'])) {
+            $given = $guesses[$index] ?? '';
+
+            if ($question['inputType'] === 'fill-in') {
+                $result = checkAnswer(
+                    (string) $given,
+                    $question['answer'],
+                    $question['ignoreDiacritics'],
+                    $question['allowTypos']
+                );
+                $questions[$index]['verdict'] = $result['verdict'];
+                if ($result['verdict'] !== 'wrong') {
+                    $totalCorrect++;
+                }
+            } else if (intval($given) === intval($question['correct'])) {
+                $questions[$index]['verdict'] = 'exact';
                 $totalCorrect++;
+            } else {
+                $questions[$index]['verdict'] = 'wrong';
             }
         }
     }
@@ -131,26 +163,39 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
         <?php foreach ($questions as $questionIndex => $question): ?>
             <div>
                 <p><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
-                <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
-                    <?php $optionId = 'q' . $questionIndex . 'o' . $answerIndex; ?>
-                    <div>
-                        <input
-                            type="radio"
-                            name="guesses[<?= $questionIndex ?>]"
-                            value="<?= $answerIndex ?>"
-                            id="<?= $optionId ?>"
-                            required="required"
-                            <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
-                        />
-                        <label for="<?= $optionId ?>">
-                            <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
-                        </label>
-                    </div>
-                <?php endforeach; ?>
+                <?php if ($question['inputType'] === 'fill-in'): ?>
+                    <input
+                        type="text"
+                        name="guesses[<?= $questionIndex ?>]"
+                        value="<?= isset($guesses[$questionIndex]) ? htmlspecialchars((string) $guesses[$questionIndex], ENT_QUOTES, 'UTF-8') : '' ?>"
+                        required="required"
+                    />
+                <?php else: ?>
+                    <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
+                        <?php $optionId = 'q' . $questionIndex . 'o' . $answerIndex; ?>
+                        <div>
+                            <input
+                                type="radio"
+                                name="guesses[<?= $questionIndex ?>]"
+                                value="<?= $answerIndex ?>"
+                                id="<?= $optionId ?>"
+                                required="required"
+                                <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
+                            />
+                            <label for="<?= $optionId ?>">
+                                <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
+                            </label>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
 
                 <?php if ($showScore): ?>
-                    <?php if (isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === intval($question['correct'])): ?>
+                    <?php if ($question['verdict'] === 'exact'): ?>
                         <p class="correct">Correct!</p>
+                    <?php elseif ($question['verdict'] === 'diacritic'): ?>
+                        <p class="correct">Accepted. Accent missing: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php elseif ($question['verdict'] === 'typo'): ?>
+                        <p class="correct">Accepted. Expected: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
                     <?php else: ?>
                         <p class="incorrect">Incorrect</p>
                     <?php endif; ?>

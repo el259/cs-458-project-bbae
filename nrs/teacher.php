@@ -243,6 +243,10 @@
         <form method="get" action="take.php">
             <input type="submit" value="Take a quiz" />
         </form>
+
+        <form method="get" action="404.php">
+            <input type="submit" value="Remove a quiz" />
+        </form>
     </div>
 
 

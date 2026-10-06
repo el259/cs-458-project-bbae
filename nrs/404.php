@@ -11,6 +11,8 @@ if (isset($_SESSION['quizName'])) {
 }
 ?>
 
+<?php require __DIR__ . '/header.php'; ?>
+
 <!DOCTYPE html>
 <html lang="en">
     
@@ -23,7 +25,7 @@ if (isset($_SESSION['quizName'])) {
 
 <body>
     <h2>404</h2>
-    <p>Whoops! The page you're looking for doesn't exist.</p>
+    <p>Whoops! The page you're looking for doesn't exist yet (sorry!).</p>
 
     <form method="get" action="teacher.php">
         <input type="submit" value="Go Back" />

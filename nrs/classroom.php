@@ -78,6 +78,7 @@ if ($classroomId <= 0) {
 <head>
     <title>Classroom</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="global.css" />
     <link rel="stylesheet" href="classroom.css" />
 </head>

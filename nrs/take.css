@@ -1,5 +1,12 @@
 /* Temporary styles, will be revamped with final design */
 body > *:not(.site-header):not(footer) {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  body > *:not(.site-header):not(footer) {
     margin-left: 2rem;
     margin-right: 2rem;
+  }
 }

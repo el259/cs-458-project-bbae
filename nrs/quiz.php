@@ -105,6 +105,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
 <head>
     <title>HumGlot</title>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="global.css" />
     <link rel="stylesheet" href="quiz.css" />
 </head>

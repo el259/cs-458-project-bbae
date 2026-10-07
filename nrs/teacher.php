@@ -113,6 +113,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="global.css" />
         <link rel="stylesheet" href="teacher.css" />
+        <script src="teacher_page.js"></script>
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -229,25 +230,25 @@
                 }
             ?>
             </tbody>
-            </table>
+        </table>
         <?php
         }
         ?>
 
 
-    <div class="quiz-actions">
-        <form method="get" action="create.php">
-            <input type="submit" value="Create a quiz" />
-        </form>
+        <div class="quiz-actions">
+            <form method="get" action="create.php">
+                <input type="submit" value="Create a quiz" />
+            </form>
 
-        <form method="get" action="take.php">
-            <input type="submit" value="Take a quiz" />
-        </form>
+            <form method="get" action="take.php">
+                <input type="submit" value="Take a quiz" />
+            </form>
 
-        <form method="get" action="404.php">
-            <input type="submit" value="Remove a quiz" />
-        </form>
-    </div>
+            <form method="get" action="404.php">
+                <input type="submit" value="Remove a quiz" />
+            </form>
+        </div>
 
 
         <form method="post" action="signin.php">
@@ -255,6 +256,6 @@
         </form>
 
 
-    <?php require __DIR__ . '/footer.php'; ?>
+        <?php require __DIR__ . '/footer.php'; ?>
     </body>
 </html>

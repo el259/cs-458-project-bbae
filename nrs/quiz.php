@@ -144,7 +144,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
 <body>
 <?php require __DIR__ . '/header.php'; ?>
 
-<form method="get" action="take.php">
+<form method="get" action="viewassignments.php">
     <input type="submit" value="Go Back" />
 </form>
 
@@ -157,8 +157,6 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
         <?php $percent = ($totalCorrect / count($questions)) * 100; ?>
         <p>Percent: <?= htmlspecialchars((string) $percent, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
-
-    <p>IGNORE: Loaded <?= count($questions) ?> questions, <?= strlen($jsonString) ?> bytes.</p>
 
     <form method="post" action="quiz.php">
         <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />

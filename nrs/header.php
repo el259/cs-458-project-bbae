@@ -35,7 +35,7 @@ if (!empty($_SESSION['teacher'])) {
         ?>
     </div>
 
-    <div class="classroom-popup active" aria-hidden="true">
+    <div class="classroom-popup" aria-hidden="true">
         <div class="background"></div>
         <div class="content">
             <p>Classroom details will appear here.</p>

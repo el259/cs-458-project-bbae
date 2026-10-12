@@ -34,6 +34,7 @@
         WHERE CLASSROOM.CLASSROOM_ID = CLASSROOM_MEMBERSHIP.CLASSROOM_ID
             AND CLASSROOM_MEMBERSHIP.USER_ID = :creator_id
             AND CLASSROOM_MEMBERSHIP.ROLE = \'teacher\'
+            AND CLASSROOM.IS_ACTIVE = \'Y\'
         ORDER BY CLASSROOM.CLASSROOM_NAME
     ';
     $classroomStatement = oci_parse($classroomConnection, $classroomSql);
@@ -82,7 +83,7 @@
         <form action="viewassignments.php" method="post">
         <?php for($i = 0; $i < count($classrooms); $i++) { ?>
             <div>
-                <button type="submit" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
+                <button type="submit" class="classroom-link" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
             </div>
         <?php } ?>
         </form>
@@ -93,11 +94,11 @@
                 <input type="submit" value="Make classroom" />
             </form>
 
-            <form method="get" action="404.php">
+            <form method="get" action="archive_classrooms.php">
                 <input type="submit" value="Archive classroom" />
             </form>
 
-            <form method="get" action="404.php">
+            <form method="get" action="delete_classrooms.php">
                 <input type="submit" value="Delete classroom" />
             </form>
 

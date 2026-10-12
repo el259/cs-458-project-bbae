@@ -13,8 +13,21 @@ if (!isset($_SESSION['user_id']))
     exit();
 }
 
+// Starting a brand-new quiz from a classroom link — clear any prior edit state
+if (isset($_GET['id']) && intval($_GET['id']) > 0)
+{
+    $_SESSION['quiz'] = [
+        'name' => '',
+        'questions' => [],
+        'editing' => -1,
+        'classroom_id' => intval($_GET['id']),
+        'due_at' => null,
+        'quiz_id' => null
+    ];
+}
+
 // Resolve classroom ID from (in order):
-// 1. ?id= query param (same as classroom.php)
+// 1. ?id= query param
 // 2. $_SESSION['classroomId'] (set by viewassignments.php)
 // 3. already-stored value in the quiz session
 $requestedClassroomId = intval($_GET['id'] ?? 0);
@@ -189,6 +202,7 @@ if (isset($_POST['cancelEdit']))
 if (isset($_POST['addQuestion']))
 {
     $question = trim($_POST['question'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $inputType = $_POST['inputType'] ?? 'multiple-choice';
     $postedAnswers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
     $correct = intval($_POST['correct'] ?? -1);
@@ -196,6 +210,7 @@ if (isset($_POST['addQuestion']))
     $ignoreDiacritics = isset($_POST['ignoreDiacritics']);
     $allowTypos = isset($_POST['allowTypos']);
     $replaceIndex = intval($_POST['editing'] ?? -1);
+    $existingImage = trim($_POST['existingImage'] ?? '');
 
 
     $answers = [];
@@ -204,14 +219,72 @@ if (isset($_POST['addQuestion']))
         $answers[] = trim((string)$answer);
     }
 
+    // Handle optional question image
+    $imagePath = $existingImage;
+    if (isset($_FILES['questionImage']) && is_array($_FILES['questionImage']) && $_FILES['questionImage']['error'] !== UPLOAD_ERR_NO_FILE)
+    {
+        $uploadError = $_FILES['questionImage']['error'];
+        if ($uploadError !== UPLOAD_ERR_OK)
+        {
+            $messages = [
+                UPLOAD_ERR_INI_SIZE => 'Image is larger than the server allows (upload_max_filesize).',
+                UPLOAD_ERR_FORM_SIZE => 'Image is larger than the form allows.',
+                UPLOAD_ERR_PARTIAL => 'Image was only partially uploaded. Try again.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Server is missing a temporary folder for uploads.',
+                UPLOAD_ERR_CANT_WRITE => 'Server could not write the temporary file.',
+                UPLOAD_ERR_EXTENSION => 'A PHP extension blocked the upload.'
+            ];
+            $error = $messages[$uploadError] ?? 'Upload failed (error code ' . $uploadError . ').';
+        }
+        else
+        {
+            $tmp = $_FILES['questionImage']['tmp_name'];
+            $info = @getimagesize($tmp);
+            $allowed = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+            if ($info === false || !in_array($info[2], $allowed, true))
+            {
+                $error = 'Please upload a JPG, PNG, GIF, or WebP image.';
+            }
+            else if ($_FILES['questionImage']['size'] > 5 * 1024 * 1024)
+            {
+                $error = 'Image must be 5 MB or smaller.';
+            }
+            else
+            {
+                $ext = image_type_to_extension($info[2], false) ?: 'jpg';
+                $uploadDir = __DIR__ . '/uploads/quiz_images';
+                if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0775, true))
+                {
+                    $error = 'Cannot create upload folder: ' . $uploadDir . '. Create it and make it writable by the web server.';
+                }
+                else if (!is_writable($uploadDir))
+                {
+                    $error = 'Upload folder is not writable: ' . $uploadDir . '. Run: chmod 775 uploads/quiz_images';
+                }
+                else
+                {
+                    $filename = 'q_' . bin2hex(random_bytes(8)) . '.' . $ext;
+                    $dest = $uploadDir . '/' . $filename;
+                    if (move_uploaded_file($tmp, $dest))
+                    {
+                        $imagePath = 'uploads/quiz_images/' . $filename;
+                    }
+                    else
+                    {
+                        $error = 'Unable to save the image to ' . $dest . '. Check folder permissions.';
+                    }
+                }
+            }
+        }
+    }
 
     $saved = null;
 
-    if ($question === '')
+    if ($error === '' && $question === '')
     {
         $error = 'Please enter a question.';
     }
-    else if ($inputType === 'fill-in')
+    else if ($error === '' && $inputType === 'fill-in')
     {
         if ($fillAnswer === '')
         {
@@ -221,6 +294,8 @@ if (isset($_POST['addQuestion']))
         {
             $saved = [
                 'question' => $question,
+                'description' => $description,
+                'image' => $imagePath,
                 'inputType' => 'fill-in',
                 'answer' => $fillAnswer,
                 'ignoreDiacritics' => $ignoreDiacritics,
@@ -228,34 +303,36 @@ if (isset($_POST['addQuestion']))
             ];
         }
     }
-    else if ($inputType !== 'multiple-choice' && $inputType !== 'true-false')
+    else if ($error === '' && $inputType !== 'multiple-choice' && $inputType !== 'true-false')
     {
         $error = 'Invalid input type.';
     }
-    else if (count($answers) < 2)
+    else if ($error === '' && count($answers) < 2)
     {
         $error = 'Please enter at least two answers.';
     }
-    else if (count($answers) > 6)
+    else if ($error === '' && count($answers) > 6)
     {
         $error = 'A question cannot have more than six answers.';
     }
-    else if ($inputType === 'true-false' && count($answers) !== 2)
+    else if ($error === '' && $inputType === 'true-false' && count($answers) !== 2)
     {
         $error = 'True/false questions must have exactly two answers.';
     }
-    else if (in_array('', $answers, true))
+    else if ($error === '' && in_array('', $answers, true))
     {
         $error = 'Answer choices cannot be empty.';
     }
-    else if (!array_key_exists($correct, $answers))
+    else if ($error === '' && !array_key_exists($correct, $answers))
     {
         $error = 'Please select a correct answer.';
     }
-    else
+    else if ($error === '')
     {
         $saved = [
             'question' => $question,
+            'description' => $description,
+            'image' => $imagePath,
             'inputType' => $inputType,
             'answers' => $answers,
             'correct' => $correct
@@ -288,12 +365,14 @@ if (isset($_POST['addQuestion']))
 if (isset($_POST['createQuiz']))
 {
     $question = trim($_POST['question'] ?? '');
+    $description = trim($_POST['description'] ?? '');
     $inputType = $_POST['inputType'] ?? 'multiple-choice';
     $postedAnswers = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
     $correct = intval($_POST['correct'] ?? -1);
     $fillAnswer = trim($_POST['fillAnswer'] ?? '');
     $ignoreDiacritics = isset($_POST['ignoreDiacritics']);
     $allowTypos = isset($_POST['allowTypos']);
+    $existingImage = trim($_POST['existingImage'] ?? '');
 
     $answers = [];
     foreach ($postedAnswers as $answer)
@@ -307,6 +386,8 @@ if (isset($_POST['createQuiz']))
     {
         $pending = [
             'question' => $question,
+            'description' => $description,
+            'image' => $existingImage,
             'inputType' => 'fill-in',
             'answer' => $fillAnswer,
             'ignoreDiacritics' => $ignoreDiacritics,
@@ -323,6 +404,8 @@ if (isset($_POST['createQuiz']))
     {
         $pending = [
             'question' => $question,
+            'description' => $description,
+            'image' => $existingImage,
             'inputType' => $inputType,
             'answers' => $answers,
             'correct' => $correct
@@ -360,11 +443,25 @@ if (isset($_POST['createQuiz']))
             }
             else
             {
-                $checkSql = '
-                    SELECT "QUIZ_ID"
-                    FROM "QUIZ"
-                    WHERE "CLASSROOM_ID" = :classroom_id AND "TITLE" = :title
-                ';
+                $quizId = intval($_SESSION['quiz']['quiz_id'] ?? 0);
+                if ($quizId > 0)
+                {
+                    $checkSql = '
+                        SELECT "QUIZ_ID"
+                        FROM "QUIZ"
+                        WHERE "CLASSROOM_ID" = :classroom_id
+                          AND "TITLE" = :title
+                          AND "QUIZ_ID" != :quiz_id
+                    ';
+                }
+                else
+                {
+                    $checkSql = '
+                        SELECT "QUIZ_ID"
+                        FROM "QUIZ"
+                        WHERE "CLASSROOM_ID" = :classroom_id AND "TITLE" = :title
+                    ';
+                }
                 $checkStatement = oci_parse($databaseConnection, $checkSql);
                 if ($checkStatement === false)
                 {
@@ -375,6 +472,10 @@ if (isset($_POST['createQuiz']))
                 {
                     oci_bind_by_name($checkStatement, ':classroom_id', $classroomId);
                     oci_bind_by_name($checkStatement, ':title', $quizName);
+                    if ($quizId > 0)
+                    {
+                        oci_bind_by_name($checkStatement, ':quiz_id', $quizId);
+                    }
 
                     if (!oci_execute($checkStatement))
                     {
@@ -400,9 +501,36 @@ if (isset($_POST['createQuiz']))
                         else
                         {
                             $dueAtValue = $_SESSION['quiz']['due_at'];
-                            if ($dueAtValue !== null && $dueAtValue !== '')
+                            $editingQuizId = intval($_SESSION['quiz']['quiz_id'] ?? 0);
+
+                            if ($editingQuizId > 0)
                             {
-                                $insertSql = '
+                                if ($dueAtValue !== null && $dueAtValue !== '')
+                                {
+                                    $saveSql = '
+                                        UPDATE "QUIZ"
+                                        SET "TITLE" = :title,
+                                            "QUIZ_JSON" = :quiz_json,
+                                            "DUE_AT" = TO_TIMESTAMP(:due_at, \'YYYY-MM-DD"T"HH24:MI\')
+                                        WHERE "QUIZ_ID" = :quiz_id
+                                          AND "CLASSROOM_ID" = :classroom_id
+                                    ';
+                                }
+                                else
+                                {
+                                    $saveSql = '
+                                        UPDATE "QUIZ"
+                                        SET "TITLE" = :title,
+                                            "QUIZ_JSON" = :quiz_json,
+                                            "DUE_AT" = NULL
+                                        WHERE "QUIZ_ID" = :quiz_id
+                                          AND "CLASSROOM_ID" = :classroom_id
+                                    ';
+                                }
+                            }
+                            else if ($dueAtValue !== null && $dueAtValue !== '')
+                            {
+                                $saveSql = '
                                     INSERT INTO "QUIZ" (
                                         "CLASSROOM_ID", "TITLE", "QUIZ_JSON", "DUE_AT"
                                     ) VALUES (
@@ -413,13 +541,13 @@ if (isset($_POST['createQuiz']))
                             }
                             else
                             {
-                                $insertSql = '
+                                $saveSql = '
                                     INSERT INTO "QUIZ" (
                                         "CLASSROOM_ID", "TITLE", "QUIZ_JSON"
                                     ) VALUES (:classroom_id, :title, :quiz_json)
                                 ';
                             }
-                            $insertStatement = oci_parse($databaseConnection, $insertSql);
+                            $insertStatement = oci_parse($databaseConnection, $saveSql);
                             $quizClob = oci_new_descriptor($databaseConnection, OCI_D_LOB);
 
                             if ($quizClob === false)
@@ -434,6 +562,10 @@ if (isset($_POST['createQuiz']))
                                 if ($dueAtValue !== null && $dueAtValue !== '')
                                 {
                                     oci_bind_by_name($insertStatement, ':due_at', $dueAtValue);
+                                }
+                                if ($editingQuizId > 0)
+                                {
+                                    oci_bind_by_name($insertStatement, ':quiz_id', $editingQuizId);
                                 }
                                 $quizClob->writeTemporary($quizJson, OCI_TEMP_CLOB);
 
@@ -508,7 +640,7 @@ if (isset($_POST['cancelQuiz']))
 <body>
     <?php require __DIR__ . '/header.php'; ?>
 
-    <h1>Create a Quiz</h1>
+    <h1><?= !empty($_SESSION['quiz']['quiz_id']) ? 'Edit Quiz' : 'Create a Quiz' ?></h1>
 
 
 <?php
@@ -569,138 +701,107 @@ else
 </form>
 
 <?php
-
-
 // Display questions that have already been added
 if (count($_SESSION['quiz']['questions']) > 0)
-    {
+{
 ?>
-
-
 <h3>Questions</h3>
-
-
+<div class="question-list">
 <?php
 foreach ($_SESSION['quiz']['questions'] as $index => $question)
-        {
+{
 ?>
-
-
-<div>
-    <p>
-    <strong> Question <?= $index + 1 ?>: </strong>
-        <?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?>
-    </p>
-    <p>
-    Input Type: <?= htmlspecialchars($question['inputType'], ENT_QUOTES, 'UTF-8') ?>
-    </p>
-    <?php
-    if ($question['inputType'] === 'fill-in')
-    {
-    ?>
-    <p>
-        Answer: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?>
-        <?php
-        if (!empty($question['ignoreDiacritics']))
-        {
-        ?>
-        <strong> (accents optional)</strong>
-        <?php
-        }
-        if (!empty($question['allowTypos']))
-        {
-        ?>
-        <strong> (typos allowed)</strong>
-        <?php
-        }
-        ?>
-    </p>
-    <?php
-    }
-    else
-    {
-    ?>
-    <ol>
-        <?php
-        foreach ($question['answers'] as $answerIndex => $answer)
-                    {
-        ?>
-        <li>
-            <?= htmlspecialchars($answer, ENT_QUOTES, 'UTF-8') ?>
-            <?php
-            if ($answerIndex == $question['correct'])
-                            {
-            ?>
-            <strong> (Correct)</strong>
-            <?php
-                            }
-            ?>
-        </li>
-        <?php
-                    }
-        ?>
-    </ol>
-    <?php
-    }
-    ?>
-
-    <form method="post" action="create_quiz.php">
+<article class="question-card">
+    <header class="question-card-header">
+        <span class="q-number">Q<?= $index + 1 ?></span>
+        <span class="q-type"><?= htmlspecialchars($question['inputType'], ENT_QUOTES, 'UTF-8') ?></span>
+    </header>
+    <h4><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></h4>
+    <?php if (!empty($question['description'])): ?>
+        <p class="q-description"><?= htmlspecialchars($question['description'], ENT_QUOTES, 'UTF-8') ?></p>
+    <?php endif; ?>
+    <?php if (!empty($question['image'])): ?>
+        <img class="q-image" src="<?= htmlspecialchars($question['image'], ENT_QUOTES, 'UTF-8') ?>" alt="Question image" />
+    <?php endif; ?>
+    <?php if ($question['inputType'] === 'fill-in'): ?>
+        <p>Answer: <strong><?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></strong>
+            <?php if (!empty($question['ignoreDiacritics'])): ?><em> (accents optional)</em><?php endif; ?>
+            <?php if (!empty($question['allowTypos'])): ?><em> (typos allowed)</em><?php endif; ?>
+        </p>
+    <?php else: ?>
+        <ol class="answer-preview">
+            <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
+                <li<?= $answerIndex == $question['correct'] ? ' class="is-correct"' : '' ?>>
+                    <?= htmlspecialchars($answer, ENT_QUOTES, 'UTF-8') ?>
+                    <?php if ($answerIndex == $question['correct']): ?><strong> (Correct)</strong><?php endif; ?>
+                </li>
+            <?php endforeach; ?>
+        </ol>
+    <?php endif; ?>
+    <form method="post" action="create_quiz.php" class="card-actions">
         <button type="submit" name="editQuestion" value="<?= $index ?>">Edit</button>
-        <button type="submit" name="removeQuestion" value="<?= $index ?>">Remove</button>
+        <button type="submit" name="removeQuestion" value="<?= $index ?>" class="danger">Remove</button>
     </form>
-
-
-</div>
-
-
+</article>
 <?php
-        }
-    }
+}
 ?>
-
-
-<!-- STEP 2: Add another question, or edit the one that was reopened -->
-
+</div>
+<?php
+}
+?>
 
 <h2><?= $editingQuestion === null ? 'Add a Question' : 'Edit Question ' . ($editingIndex + 1) ?></h2>
 
-
-<form method="post" action="create_quiz.php">
+<form method="post" action="create_quiz.php" enctype="multipart/form-data" class="question-editor">
 <input type="hidden" name="editing" value="<?= $editingIndex ?>" />
-
+<input type="hidden" name="existingImage" value="<?= $editingQuestion !== null && !empty($editingQuestion['image']) ? htmlspecialchars($editingQuestion['image'], ENT_QUOTES, 'UTF-8') : '' ?>" />
 
 <div>
-    <label for="question"> Question </label>
-
-
+    <label for="question">Question</label>
     <input
-    type="text"
-    name="question"
-    id="question"
-    required="required"
-    value="<?= $editingQuestion === null ? '' : htmlspecialchars($editingQuestion['question'], ENT_QUOTES, 'UTF-8') ?>"
+        type="text"
+        name="question"
+        id="question"
+        required="required"
+        placeholder="What is the capital of France?"
+        value="<?= $editingQuestion === null ? '' : htmlspecialchars($editingQuestion['question'], ENT_QUOTES, 'UTF-8') ?>"
     />
 </div>
 
+<div>
+    <label for="description">Description <span class="optional">(optional)</span></label>
+    <textarea
+        name="description"
+        id="description"
+        rows="3"
+        placeholder="Extra context or instructions shown above the answers"
+    ><?= $editingQuestion !== null && !empty($editingQuestion['description']) ? htmlspecialchars($editingQuestion['description'], ENT_QUOTES, 'UTF-8') : '' ?></textarea>
+</div>
 
 <div>
-    <label for="inputType">Input Type</label>
+    <label for="questionImage">Image <span class="optional">(optional)</span></label>
+    <?php if ($editingQuestion !== null && !empty($editingQuestion['image'])): ?>
+        <img class="q-image preview" src="<?= htmlspecialchars($editingQuestion['image'], ENT_QUOTES, 'UTF-8') ?>" alt="Current image" />
+        <p class="hint">Upload a new image to replace the current one.</p>
+    <?php endif; ?>
+    <input type="file" name="questionImage" id="questionImage" accept="image/jpeg,image/png,image/gif,image/webp" />
+</div>
 
-
+<div>
+    <label for="inputType">Answer type</label>
     <select name="inputType" id="inputType">
-        <option value="multiple-choice" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'multiple-choice' ? 'selected="selected"' : '' ?>> Multiple Choice </option>
-        <option value="true-false" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'true-false' ? 'selected="selected"' : '' ?>> True / False </option>
-        <option value="fill-in" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'fill-in' ? 'selected="selected"' : '' ?>> Fill in the blank </option>
+        <option value="multiple-choice" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'multiple-choice' ? 'selected="selected"' : '' ?>>Multiple Choice</option>
+        <option value="true-false" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'true-false' ? 'selected="selected"' : '' ?>>True / False</option>
+        <option value="fill-in" <?= $editingQuestion !== null && $editingQuestion['inputType'] === 'fill-in' ? 'selected="selected"' : '' ?>>Fill in the blank</option>
     </select>
 </div>
 
-
 <div id="choiceFields">
-    <p>Answers</p>
+    <p class="field-label">Answers <span class="hint">— select the correct one</span></p>
     <div id="answers"></div>
     <button type="button" id="addAnswer">Add Answer</button>
 </div>
-
 
 <div id="fillFields">
     <label for="fillAnswer">Correct answer</label>
@@ -710,26 +811,23 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
         id="fillAnswer"
         value="<?= $editingQuestion !== null && $editingQuestion['inputType'] === 'fill-in' ? htmlspecialchars($editingQuestion['answer'], ENT_QUOTES, 'UTF-8') : '' ?>"
     />
-    <label>
+    <label class="check">
         <input type="checkbox" name="ignoreDiacritics" <?= $editingQuestion !== null && !empty($editingQuestion['ignoreDiacritics']) ? 'checked="checked"' : '' ?> />
         Accept missing accents
     </label>
-    <label>
+    <label class="check">
         <input type="checkbox" name="allowTypos" <?= $editingQuestion !== null && !empty($editingQuestion['allowTypos']) ? 'checked="checked"' : '' ?> />
         Accept a small typo
     </label>
 </div>
 
-
-    <div>
-        <input
+<div class="form-actions">
+    <input
         type="submit"
         name="addQuestion"
         value="<?= $editingQuestion === null ? 'Add Question' : 'Save Question' ?>"
-        />
-    </div>
-
-
+    />
+</div>
 </form>
 
 <?php
@@ -751,10 +849,7 @@ if (count($_SESSION['quiz']['questions']) > 0)
 ?>
 
 
-<form method="post" action="create_quiz.php">
-
-<div>
-    <label for="dueAt">Due date (optional)</label>
+<form method="post" action="create_quiz.php" class="create-block">
     <input
         type="datetime-local"
         name="dueAt"
@@ -766,7 +861,7 @@ if (count($_SESSION['quiz']['questions']) > 0)
 <input
     type="submit"
     name="createQuiz"
-    value="Create Quiz (<?= count($_SESSION['quiz']['questions']) ?> questions)"
+    value="<?= !empty($_SESSION['quiz']['quiz_id']) ? 'Save Quiz' : 'Create Quiz' ?> (<?= count($_SESSION['quiz']['questions']) ?> questions)"
 />
 
 </form>

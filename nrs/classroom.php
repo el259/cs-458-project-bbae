@@ -122,7 +122,7 @@ if ($classroomId <= 0) {
 <?php endif; ?>
 
 <form method="get" action="teacher.php">
-    <input type="submit" value="Go Back" />
+    <input type="submit" name="goback" value="Go Back" />
 </form>
 
 <?php require __DIR__ . '/footer.php'; ?>

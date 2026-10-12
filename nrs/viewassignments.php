@@ -108,7 +108,7 @@ if ($classroomId <= 0) {
                 }
                 ?>
                 <div>
-                    <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>"><?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?></button>
+                    <button type="submit" class="classroom-link" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>"><?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?></button>
                     <label for="<?= $assignment['id'] ?>">Due on: <?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?></label>
                 </div>
             <?php endforeach; ?>
@@ -120,10 +120,12 @@ if ($classroomId <= 0) {
             <input type="hidden" name="id" value="<?= $classroomId ?>" />
             <input type="submit" value="Make quiz" />
         </form> 
-        <form method="get" action="404.php">
+        <form method="get" action="edit_quiz.php">
+            <input type="hidden" name="id" value="<?= $classroomId ?>" />
             <input type="submit" value="Edit quiz" />
         </form>
-        <form method="get" action="404.php">
+        <form method="get" action="delete_quiz.php">
+            <input type="hidden" name="id" value="<?= $classroomId ?>" />
             <input type="submit" value="Delete quiz" />
         </form>
     </div>
@@ -131,7 +133,7 @@ if ($classroomId <= 0) {
 <?php endif; ?>
 
 <form method="get" action="student.php">
-    <input type="submit" value="Go Back" />
+    <input type="submit" name="goback" value="Go Back" />
 </form>
 
 <?php require __DIR__ . '/footer.php'; ?>

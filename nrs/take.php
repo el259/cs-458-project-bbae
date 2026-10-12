@@ -87,7 +87,7 @@ oci_close($databaseConnection);
 <?php require __DIR__ . '/footer.php'; ?>
 
 <form method="get" action="teacher.php">
-    <input type="submit" value="Go Back" />
+    <input type="submit" name="goback" value="Go Back" />
 </form>
 
 </body>

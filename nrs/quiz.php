@@ -64,6 +64,12 @@ if ($quizId <= 0) {
                             : '';
                         $ignoreDiacritics = !empty($rawQuestion['ignoreDiacritics']);
                         $allowTypos = !empty($rawQuestion['allowTypos']);
+                        $description = isset($rawQuestion['description'])
+                            ? (string) $rawQuestion['description']
+                            : '';
+                        $image = isset($rawQuestion['image'])
+                            ? (string) $rawQuestion['image']
+                            : '';
                     } else {
                         $questionText = (string) $rawQuestion;
                         $optionList = isset($data['answers'][$index]) &&
@@ -71,6 +77,8 @@ if ($quizId <= 0) {
                             ? $data['answers'][$index]
                             : [];
                         $correctIndex = -1;
+                        $description = '';
+                        $image = '';
 
                         if (isset($data['correct'][$index])) {
                             $correctValue = $data['correct'][$index];
@@ -86,6 +94,8 @@ if ($quizId <= 0) {
 
                     $questions[] = [
                         'question' => $questionText,
+                        'description' => $description,
+                        'image' => $image,
                         'inputType' => $inputType,
                         'answers' => $optionList,
                         'correct' => $correctIndex,
@@ -161,8 +171,14 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
     <form method="post" action="quiz.php">
         <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />
         <?php foreach ($questions as $questionIndex => $question): ?>
-            <div>
-                <p><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
+            <div class="quiz-question">
+                <p class="q-text"><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php if (!empty($question['description'])): ?>
+                    <p class="q-description"><?= htmlspecialchars($question['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php endif; ?>
+                <?php if (!empty($question['image'])): ?>
+                    <img class="q-image" src="<?= htmlspecialchars($question['image'], ENT_QUOTES, 'UTF-8') ?>" alt="Question image" />
+                <?php endif; ?>
                 <?php if ($question['inputType'] === 'fill-in'): ?>
                     <input
                         type="text"

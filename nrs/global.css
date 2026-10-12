@@ -114,13 +114,36 @@ input[type="radio"] {
     vertical-align: middle;
 }
 
-input[name="logout"]{
+input[name="logout"],input[name="goback"]{
     background: #e5e7eb;
     color: #374151;
 }
 
-input[name="logout"]:hover{
+input[name="logout"]:hover, input[name="goback"]:hover {
     background: #d1d5db;
+}
+
+/* Classroom entry buttons — visually distinct from blue navigation buttons */
+button.classroom-link,
+input.classroom-link {
+    display: block;
+    width: 100%;
+    max-width: 28rem;
+    margin: 0.4rem 0;
+    padding: 0.85rem 1.2rem;
+    background: #EBF5EC;
+    color: #166534;
+    border: 2px solid #28A847;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+button.classroom-link:hover,
+input.classroom-link:hover {
+    background: #28A847;
+    color: #ffffff;
+    border-color: #28A847;
 }
 
 form div div {

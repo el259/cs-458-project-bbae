@@ -1,5 +1,27 @@
-/* Temporary styles, will be revamped with final design */
-body > *:not(.site-header):not(footer) {
-    margin-left: 2rem;
-    margin-right: 2rem;
+/* Quiz taking styles for description + image */
+
+.quiz-question {
+    margin: 1.25rem 0 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.quiz-question .q-text {
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
+}
+
+.quiz-question .q-description {
+    color: #374151;
+    margin: 0 0 0.6rem;
+}
+
+.quiz-question .q-image {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    border-radius: 0.4rem;
+    margin: 0.4rem 0 0.8rem;
+    border: 1px solid #e5e7eb;
 }

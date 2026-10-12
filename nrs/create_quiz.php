@@ -13,20 +13,83 @@ if (!isset($_SESSION['user_id']))
     exit();
 }
 
+// Resolve classroom ID from (in order):
+// 1. ?id= query param (same as classroom.php)
+// 2. $_SESSION['classroomId'] (set by viewassignments.php)
+// 3. already-stored value in the quiz session
+$requestedClassroomId = intval($_GET['id'] ?? 0);
+if ($requestedClassroomId <= 0 && isset($_SESSION['classroomId']))
+{
+    $requestedClassroomId = intval($_SESSION['classroomId']);
+}
+if ($requestedClassroomId <= 0 && isset($_SESSION['quiz']['classroom_id']))
+{
+    $requestedClassroomId = intval($_SESSION['quiz']['classroom_id']);
+}
 
-// Start a new quiz
+if ($requestedClassroomId > 0)
+{
+    $databaseConnection = hum_conn_no_login();
+    $verifySql = '
+        SELECT c."CLASSROOM_ID"
+        FROM "CLASSROOM" c
+        JOIN "CLASSROOM_MEMBERSHIP" m
+          ON m."CLASSROOM_ID" = c."CLASSROOM_ID"
+        WHERE c."CLASSROOM_ID" = :classroom_id
+          AND m."USER_ID" = :user_id
+          AND m."ROLE" = \'teacher\'
+    ';
+    $verifyStatement = oci_parse($databaseConnection, $verifySql);
+    $userId = $_SESSION['user_id'];
+    oci_bind_by_name($verifyStatement, ':classroom_id', $requestedClassroomId);
+    oci_bind_by_name($verifyStatement, ':user_id', $userId);
+
+    if (oci_execute($verifyStatement) && oci_fetch_assoc($verifyStatement) !== false)
+    {
+        if (!isset($_SESSION['quiz']))
+        {
+            $_SESSION['quiz'] = [
+                'name' => '',
+                'questions' => [],
+                'editing' => -1,
+                'classroom_id' => $requestedClassroomId,
+                'due_at' => null
+            ];
+        }
+        else
+        {
+            $_SESSION['quiz']['classroom_id'] = $requestedClassroomId;
+        }
+    }
+    oci_free_statement($verifyStatement);
+    oci_close($databaseConnection);
+}
+
+// Start a new quiz session if needed
 if (!isset($_SESSION['quiz']))
 {
     $_SESSION['quiz'] = [
         'name' => '',
         'questions' => [],
-        'editing' => -1
+        'editing' => -1,
+        'classroom_id' => null,
+        'due_at' => null
     ];
 }
 
 if (!isset($_SESSION['quiz']['editing']))
 {
     $_SESSION['quiz']['editing'] = -1;
+}
+
+if (!isset($_SESSION['quiz']['classroom_id']))
+{
+    $_SESSION['quiz']['classroom_id'] = null;
+}
+
+if (!isset($_SESSION['quiz']['due_at']))
+{
+    $_SESSION['quiz']['due_at'] = null;
 }
 
 
@@ -55,7 +118,7 @@ if (isset($_POST['setQuizName']))
         $_SESSION['quiz']['name'] = $quizName;
 
 
-        header("Location: create.php");
+        header("Location: create_quiz.php");
         exit();
     }
 }
@@ -66,7 +129,7 @@ if (isset($_POST['editQuizName']))
 {
     $_SESSION['quiz']['name'] = '';
     $_SESSION['quiz']['editing'] = -1;
-    header("Location: create.php");
+    header("Location: create_quiz.php");
     exit();
 }
 
@@ -83,7 +146,7 @@ if (isset($_POST['editQuestion']))
     else
     {
         $_SESSION['quiz']['editing'] = $index;
-        header("Location: create.php");
+        header("Location: create_quiz.php");
         exit();
     }
 }
@@ -108,7 +171,7 @@ if (isset($_POST['removeQuestion']))
         }
     }
 
-    header("Location: create.php");
+    header("Location: create_quiz.php");
     exit();
 }
 
@@ -117,7 +180,7 @@ if (isset($_POST['removeQuestion']))
 if (isset($_POST['cancelEdit']))
 {
     $_SESSION['quiz']['editing'] = -1;
-    header("Location: create.php");
+    header("Location: create_quiz.php");
     exit();
 }
 
@@ -215,7 +278,7 @@ if (isset($_POST['addQuestion']))
         }
 
         $_SESSION['quiz']['editing'] = -1;
-        header("Location: create.php");
+        header("Location: create_quiz.php");
         exit();
     }
 }
@@ -273,6 +336,8 @@ if (isset($_POST['createQuiz']))
 
     $quizName = trim($_SESSION['quiz']['name']);
     $questions = $_SESSION['quiz']['questions'];
+    $dueAt = trim($_POST['dueAt'] ?? ($_SESSION['quiz']['due_at'] ?? ''));
+    $_SESSION['quiz']['due_at'] = $dueAt !== '' ? $dueAt : null;
 
     if ($quizName === '' || count($questions) === 0)
     {
@@ -281,85 +346,134 @@ if (isset($_POST['createQuiz']))
     else
     {
         $databaseConnection = hum_conn_no_login();
-        $checkSql = '
-            SELECT "QUIZ_ID"
-            FROM "QUIZ"
-            WHERE "CREATOR_ID" = :creator_id AND "TITLE" = :title
-        ';
-        $checkStatement = oci_parse($databaseConnection, $checkSql);
-        $creatorId = $_SESSION['user_id'];
-        oci_bind_by_name($checkStatement, ':creator_id', $creatorId);
-        oci_bind_by_name($checkStatement, ':title', $quizName);
-
-        if (!oci_execute($checkStatement))
+        if ($databaseConnection === false)
         {
-            $error = 'Unable to check for existing quizzes.';
-        }
-        else if (oci_fetch_assoc($checkStatement) !== false)
-        {
-            $error = 'A quiz with that name already exists.';
+            $error = 'Unable to connect to the database. Check hum_conn_no_login().';
         }
         else
         {
-            $storedQuiz = [
-                'name' => $quizName,
-                'questions' => $questions
-            ];
-            $quizJson = json_encode($storedQuiz, JSON_UNESCAPED_UNICODE);
-            $description = (string) count($questions);
-
-            if ($quizJson === false)
+            // Classroom ID comes from the quiz session (set via ?id= and verified above)
+            $classroomId = $_SESSION['quiz']['classroom_id'] ?? null;
+            if ($classroomId === null || $classroomId === '' || intval($classroomId) <= 0)
             {
-                $error = 'Unable to format the quiz data.';
+                $error = 'No classroom selected. Open this page from a classroom (create_quiz.php?id=CLASSROOM_ID).';
             }
             else
             {
-                $insertSql = '
-                    INSERT INTO "QUIZ" (
-                        "CREATOR_ID", "TITLE", "DESCRIPTION", "QUIZ_JSON"
-                    ) VALUES (:creator_id, :title, :description, :quiz_json)
+                $checkSql = '
+                    SELECT "QUIZ_ID"
+                    FROM "QUIZ"
+                    WHERE "CLASSROOM_ID" = :classroom_id AND "TITLE" = :title
                 ';
-                $insertStatement = oci_parse($databaseConnection, $insertSql);
-                $quizClob = oci_new_descriptor($databaseConnection, OCI_D_LOB);
-
-                if ($quizClob === false)
+                $checkStatement = oci_parse($databaseConnection, $checkSql);
+                if ($checkStatement === false)
                 {
-                    $error = 'Unable to create the quiz data object.';
+                    $e = oci_error($databaseConnection);
+                    $error = 'Unable to parse quiz check query: ' . htmlspecialchars($e['message'] ?? 'unknown error', ENT_QUOTES, 'UTF-8');
                 }
                 else
                 {
-                    oci_bind_by_name($insertStatement, ':creator_id', $creatorId);
-                    oci_bind_by_name($insertStatement, ':title', $quizName);
-                    oci_bind_by_name($insertStatement, ':description', $description);
-                    oci_bind_by_name($insertStatement, ':quiz_json', $quizClob, -1, OCI_B_CLOB);
-                    $quizClob->writeTemporary($quizJson, OCI_TEMP_CLOB);
+                    oci_bind_by_name($checkStatement, ':classroom_id', $classroomId);
+                    oci_bind_by_name($checkStatement, ':title', $quizName);
 
-                    if (!oci_execute($insertStatement, OCI_NO_AUTO_COMMIT))
+                    if (!oci_execute($checkStatement))
                     {
-                        oci_rollback($databaseConnection);
-                        $error = 'Unable to save the quiz.';
+                        $e = oci_error($checkStatement);
+                        $error = 'Unable to check for existing quizzes: ' . htmlspecialchars($e['message'] ?? 'unknown error', ENT_QUOTES, 'UTF-8');
+                    }
+                    else if (oci_fetch_assoc($checkStatement) !== false)
+                    {
+                        $error = 'A quiz with that name already exists in this classroom.';
                     }
                     else
                     {
-                        oci_commit($databaseConnection);
-                        unset($_SESSION['quiz']);
-                        $quizClob->free();
-                        oci_free_statement($insertStatement);
-                        oci_free_statement($checkStatement);
-                        oci_close($databaseConnection);
-                        header('Location: teacher.php');
-                        exit();
+                        $storedQuiz = [
+                            'name' => $quizName,
+                            'questions' => $questions
+                        ];
+                        $quizJson = json_encode($storedQuiz, JSON_UNESCAPED_UNICODE);
+
+                        if ($quizJson === false)
+                        {
+                            $error = 'Unable to format the quiz data.';
+                        }
+                        else
+                        {
+                            $dueAtValue = $_SESSION['quiz']['due_at'];
+                            if ($dueAtValue !== null && $dueAtValue !== '')
+                            {
+                                $insertSql = '
+                                    INSERT INTO "QUIZ" (
+                                        "CLASSROOM_ID", "TITLE", "QUIZ_JSON", "DUE_AT"
+                                    ) VALUES (
+                                        :classroom_id, :title, :quiz_json,
+                                        TO_TIMESTAMP(:due_at, \'YYYY-MM-DD"T"HH24:MI\')
+                                    )
+                                ';
+                            }
+                            else
+                            {
+                                $insertSql = '
+                                    INSERT INTO "QUIZ" (
+                                        "CLASSROOM_ID", "TITLE", "QUIZ_JSON"
+                                    ) VALUES (:classroom_id, :title, :quiz_json)
+                                ';
+                            }
+                            $insertStatement = oci_parse($databaseConnection, $insertSql);
+                            $quizClob = oci_new_descriptor($databaseConnection, OCI_D_LOB);
+
+                            if ($quizClob === false)
+                            {
+                                $error = 'Unable to create the quiz data object.';
+                            }
+                            else
+                            {
+                                oci_bind_by_name($insertStatement, ':classroom_id', $classroomId);
+                                oci_bind_by_name($insertStatement, ':title', $quizName);
+                                oci_bind_by_name($insertStatement, ':quiz_json', $quizClob, -1, OCI_B_CLOB);
+                                if ($dueAtValue !== null && $dueAtValue !== '')
+                                {
+                                    oci_bind_by_name($insertStatement, ':due_at', $dueAtValue);
+                                }
+                                $quizClob->writeTemporary($quizJson, OCI_TEMP_CLOB);
+
+                                if (!oci_execute($insertStatement, OCI_NO_AUTO_COMMIT))
+                                {
+                                    $e = oci_error($insertStatement);
+                                    oci_rollback($databaseConnection);
+                                    $error = 'Unable to save the quiz: ' . htmlspecialchars($e['message'] ?? 'unknown error', ENT_QUOTES, 'UTF-8');
+                                }
+                                else
+                                {
+                                    oci_commit($databaseConnection);
+                                    unset($_SESSION['quiz']);
+                                    $quizClob->free();
+                                    oci_free_statement($insertStatement);
+                                    oci_free_statement($checkStatement);
+                                    oci_close($databaseConnection);
+                                    header('Location: teacher.php');
+                                    exit();
+                                }
+
+                                $quizClob->free();
+                            }
+
+                            if (isset($insertStatement))
+                            {
+                                oci_free_statement($insertStatement);
+                            }
+                        }
                     }
 
-                    $quizClob->free();
+                    if (isset($checkStatement))
+                    {
+                        oci_free_statement($checkStatement);
+                    }
                 }
-
-                oci_free_statement($insertStatement);
             }
-        }
 
-        oci_free_statement($checkStatement);
-        oci_close($databaseConnection);
+            oci_close($databaseConnection);
+        }
     }
 }
 
@@ -379,7 +493,7 @@ if (isset($_POST['cancelQuiz']))
 <!--
     Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
     Last Modified: 9/20/26
-    CREATE.PHP
+    create_quiz.php
 -->
 
 
@@ -410,7 +524,7 @@ if (isset($_POST['cancelQuiz']))
     ?>
 
 <!-- Go back to teacher page -->
-<form method="post" action="create.php">
+<form method="post" action="create_quiz.php">
 <input type="submit" name="cancelQuiz" value="Cancel" />
 </form>
 
@@ -425,7 +539,7 @@ if ($_SESSION['quiz']['name'] == '')
 
 
 <h2>1. Name Your Quiz</h2>
-    <form method="post" action="create.php">
+    <form method="post" action="create_quiz.php">
     <label for="quizName">Quiz Name</label>
     <input
         type="text"
@@ -450,7 +564,7 @@ else
 
 <h2><?= htmlspecialchars($_SESSION['quiz']['name'], ENT_QUOTES, 'UTF-8') ?></h2>
 
-<form method="post" action="create.php">
+<form method="post" action="create_quiz.php">
     <input type="submit" name="editQuizName" value="Back to quiz name" />
 </form>
 
@@ -530,7 +644,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
     }
     ?>
 
-    <form method="post" action="create.php">
+    <form method="post" action="create_quiz.php">
         <button type="submit" name="editQuestion" value="<?= $index ?>">Edit</button>
         <button type="submit" name="removeQuestion" value="<?= $index ?>">Remove</button>
     </form>
@@ -551,7 +665,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 <h2><?= $editingQuestion === null ? 'Add a Question' : 'Edit Question ' . ($editingIndex + 1) ?></h2>
 
 
-<form method="post" action="create.php">
+<form method="post" action="create_quiz.php">
 <input type="hidden" name="editing" value="<?= $editingIndex ?>" />
 
 
@@ -622,7 +736,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 if ($editingQuestion !== null)
 {
 ?>
-<form method="post" action="create.php">
+<form method="post" action="create_quiz.php">
     <input type="submit" name="cancelEdit" value="Back to new question" />
 </form>
 <?php
@@ -637,15 +751,23 @@ if (count($_SESSION['quiz']['questions']) > 0)
 ?>
 
 
-<form method="post" action="create.php">
+<form method="post" action="create_quiz.php">
 
+<div>
+    <label for="dueAt">Due date (optional)</label>
+    <input
+        type="datetime-local"
+        name="dueAt"
+        id="dueAt"
+        value="<?= htmlspecialchars($_SESSION['quiz']['due_at'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+    />
+</div>
 
 <input
     type="submit"
     name="createQuiz"
     value="Create Quiz (<?= count($_SESSION['quiz']['questions']) ?> questions)"
 />
-
 
 </form>
 

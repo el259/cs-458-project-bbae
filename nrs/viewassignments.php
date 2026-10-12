@@ -92,18 +92,33 @@ if ($classroomId <= 0) {
     <?php else: ?>
         <form action="quiz.php" method="post">
             <?php foreach ($assignments as $assignment): 
-                $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']); ?>
+                $dueLabel = 'No due date';
+                if (!empty($assignment['due']))
+                {
+                    $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
+                    if ($date instanceof DateTime)
+                    {
+                        $dueLabel = $date->format('F j, Y, g:i A');
+                    }
+                    else
+                    {
+                        // Fallback if Oracle returns a different format
+                        $dueLabel = $assignment['due'];
+                    }
+                }
+                ?>
                 <div>
                     <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>"><?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?></button>
-                    <label for="<?= $assignment['id'] ?>">Due on: <?= htmlspecialchars($date->format('F j, Y, g:i A'), ENT_QUOTES, 'UTF-8') ?></label>
+                    <label for="<?= $assignment['id'] ?>">Due on: <?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?></label>
                 </div>
             <?php endforeach; ?>
         </form>
     <?php endif; 
         if(!empty($_SESSION['teacher'])) { ?>
     <div class="quiz-actions">
-        <form method="get" action="create.php">
-            <input type="submit" value="Make quiz (Broken)" />
+        <form method="get" action="create_quiz.php">
+            <input type="hidden" name="id" value="<?= $classroomId ?>" />
+            <input type="submit" value="Make quiz" />
         </form> 
         <form method="get" action="404.php">
             <input type="submit" value="Edit quiz" />

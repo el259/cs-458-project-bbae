@@ -1,0 +1,14 @@
+form, h2, h3 {
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+table {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}
+
+/* Temporary styles, will be revamped with final design */
+body > *:not(.site-header):not(footer) {
+    margin-left: 2rem;
+    margin-right: 2rem;
+}

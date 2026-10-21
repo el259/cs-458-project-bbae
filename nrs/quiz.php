@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
 $error = '';
 $quizId = intval($_POST['quizId'] ?? $_SESSION['quizId'] ?? 0);
+$quizTitle = '';
 $questions = [];
 $guesses = [];
 $totalCorrect = 0;
@@ -19,7 +20,7 @@ if ($quizId <= 0) {
     $_SESSION['quizId'] = $quizId;
     $databaseConnection = hum_conn_no_login();
     $sql = '
-        SELECT "QUIZ_JSON"
+        SELECT "TITLE", "QUIZ_JSON"
         FROM "QUIZ"
         WHERE "QUIZ_ID" = :quiz_id
     ';
@@ -34,6 +35,7 @@ if ($quizId <= 0) {
         if ($quiz === false) {
             $error = 'Quiz not found.';
         } else {
+            $quizTitle = $quiz['TITLE'];
             $jsonValue = $quiz['QUIZ_JSON'];
             $jsonString = is_object($jsonValue) && method_exists($jsonValue, 'load')
                 ? $jsonValue->load()
@@ -116,7 +118,7 @@ if ($quizId <= 0) {
     oci_close($databaseConnection);
 }
 
-if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
+if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && isset($_SESSION['user_id'])) {
     $guesses = $_POST['guesses'];
 
     if (count($questions) > 0 && count($guesses) === count($questions)) {
@@ -142,6 +144,79 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
                 $questions[$index]['verdict'] = 'wrong';
             }
         }
+
+        $databaseConnection = hum_conn_no_login();
+
+        $userId = $_SESSION['user_id'];
+        $maxPoints = -1;
+        $currentAttempts = 0;
+        $redirect = false;
+
+        $selectSql = '
+            SELECT "POINTS_POSSIBLE"
+            FROM "QUIZ"
+            WHERE "QUIZ_ID" = :quiz_id
+        ';
+        $statement = oci_parse($databaseConnection, $selectSql);
+        oci_bind_by_name($statement, ':quiz_id', $quizId);
+        if (!oci_execute($statement)) {
+            $error = 'Error reading quiz point data.';
+        } else {
+            $points = oci_fetch_assoc($statement);
+            $maxPoints = $points['POINTS_POSSIBLE'];
+        }
+        oci_free_statement($statement);
+
+        if($error === '') {
+            $selectSql = '
+                SELECT COUNT(*) "NUM_ATTEMPTS"
+                FROM "QUIZ_ATTEMPT"
+                WHERE "QUIZ_ID" = :quiz_id
+                    AND "USER_ID" = :user_id
+            ';
+            $statement = oci_parse($databaseConnection, $selectSql);
+            oci_bind_by_name($statement, ':quiz_id', $quizId);
+            oci_bind_by_name($statement, ':user_id', $userId);
+            if (!oci_execute($statement)) {
+                $error = 'Error calculating quiz attempt number.';
+            } else {
+                $attempts = oci_fetch_assoc($statement);
+                $currentAttempts = $attempts['NUM_ATTEMPTS'];
+            }
+            
+            oci_free_statement($statement);
+        }
+
+        if($error === '') {
+            $score = ($totalCorrect / count($questions)) * $maxPoints;
+            $attempt = $currentAttempts + 1;
+
+            $updateSql = '
+                INSERT INTO QUIZ_ATTEMPT ("QUIZ_ID", "USER_ID", "ATTEMPT_NUMBER", "SUBMITTED_AT", "SCORE")
+                VALUES
+                (:quiz_id, :user_id, :attempt_number, SYSDATE, :score)
+            ';
+            $statement = oci_parse($databaseConnection, $updateSql);
+            oci_bind_by_name($statement, ':quiz_id', $quizId);
+            oci_bind_by_name($statement, ':user_id', $userId);
+            oci_bind_by_name($statement, ':attempt_number', $attempt);
+            oci_bind_by_name($statement, ':score', $score);
+
+            if (!oci_execute($statement)) {
+                $error = 'Error submitting quiz.';
+            } else {
+                $redirect = true;
+            }
+            
+            oci_free_statement($statement);
+        }
+        
+        oci_close($databaseConnection);
+
+        // if($redirect) {
+        //     header("Location: viewquiz.php");
+        //     exit();
+        // }
     }
 }
 ?>
@@ -166,7 +241,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
 <body>
 <?php require __DIR__ . '/header.php'; ?>
 
-<form method="get" action="viewassignments.php">
+<form method="get" action="viewquiz.php">
     <input type="submit" value="Go Back" />
 </form>
 
@@ -175,6 +250,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
 <?php elseif (count($questions) === 0): ?>
     <p>Error loading quiz. Try again.</p>
 <?php else: ?>
+    <h1><?= htmlspecialchars($quizTitle) ?></h1>
     <?php if ($showScore): ?>
         <?php $percent = ($totalCorrect / count($questions)) * 100; ?>
         <p>Percent: <?= htmlspecialchars((string) $percent, ENT_QUOTES, 'UTF-8') ?></p>

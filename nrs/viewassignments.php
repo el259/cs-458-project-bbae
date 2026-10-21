@@ -109,7 +109,7 @@ if ($classroomId <= 0) {
     <?php if (count($assignments) === 0): ?>
         <p>No quizzes yet.</p>
     <?php else: ?>
-        <form action="quiz.php" method="post">
+        <form action="viewquiz.php" method="post">
             <?php foreach ($assignments as $assignment): 
                 $dueLabel = 'No due date';
                 if (!empty($assignment['due']))

@@ -1,4 +1,6 @@
 <?php
+    session_start();
+    
     $logo_href = "index.php";
     if (!empty($_SESSION['teacher'])) {
         $logo_href = "teacher.php";
@@ -7,21 +9,23 @@
     }
 
     // Get the classrooms
+    $classroomId = intval($_SESSION['classroomId'] ?? -1);
     $classrooms = [];
-    $creatorId = $_SESSION['user_id'];
+    $currentClassroomName = '';
+    $uesrId = $_SESSION['user_id'];
     $classroomConnection = hum_conn_no_login();
     
     $classroomSql = '
         SELECT CLASSROOM.CLASSROOM_ID, CLASSROOM.CLASSROOM_NAME
         FROM CLASSROOM, CLASSROOM_MEMBERSHIP
         WHERE CLASSROOM.CLASSROOM_ID = CLASSROOM_MEMBERSHIP.CLASSROOM_ID
-            AND CLASSROOM_MEMBERSHIP.USER_ID = :creator_id
+            AND CLASSROOM_MEMBERSHIP.USER_ID = :user_id
             AND CLASSROOM_MEMBERSHIP.ROLE = \'teacher\'
             AND CLASSROOM.IS_ACTIVE = \'Y\'
         ORDER BY CLASSROOM.CLASSROOM_NAME
     ';
     $classroomStatement = oci_parse($classroomConnection, $classroomSql);
-    oci_bind_by_name($classroomStatement, ':creator_id', $creatorId);
+    oci_bind_by_name($classroomStatement, ':user_id', $uesrId);
 
     if (oci_execute($classroomStatement))
     {
@@ -31,6 +35,9 @@
                 'id' => $classroom['CLASSROOM_ID'],
                 'name' => $classroom['CLASSROOM_NAME']
             ];
+            if (intval($classroom['CLASSROOM_ID']) === $classroomId) {
+                $currentClassroomName = $classroom['CLASSROOM_NAME'];
+            }
         }
     }
 
@@ -43,7 +50,7 @@
         <p>HumGlot</p>
     </a>
     <button class="classroom-button" onclick="toggleClassroomPopup()">
-        <?= $classrooms[0]['name'] ?? '' ?>
+        <?= htmlspecialchars($currentClassroomName, ENT_QUOTES, 'UTF-8') ?>
         <svg width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <g>
                 <path fill="none" d="M0 0h24v24H0z"/>
@@ -75,7 +82,30 @@
                     X
                 </button>
             </div>
-            <p>Classroom details will appear here.</p>
+
+            <!-- Classroom list -->
+            <form action="teacher.php" method="post">
+            <?php for($i = 0; $i < count($classrooms); $i++) { ?>
+                <div>
+                    <button type="submit" class="classroom-link" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
+                </div>
+            <?php } ?>
+            </form>
+
+            <!-- Classroom button options -->
+            <div class="quiz-actions">
+                <form method="get" action="create_classroom.php">
+                    <input type="submit" value="Make classroom" />
+                </form>
+
+                <form method="get" action="archive_classrooms.php">
+                    <input type="submit" value="Archive classroom" />
+                </form>
+
+                <form method="get" action="delete_classrooms.php">
+                    <input type="submit" value="Delete classroom" />
+                </form>
+            </div>
         </div>
     </div>
 </div>

@@ -29,7 +29,7 @@ if (isset($_GET['id']) && intval($_GET['id']) > 0)
 
 // Resolve classroom ID from (in order):
 // 1. ?id= query param
-// 2. $_SESSION['classroomId'] (set by viewassignments.php)
+// 2. $_SESSION['classroomId'] (set by teacher.php)
 // 3. already-stored value in the quiz session
 $requestedClassroomId = intval($_GET['id'] ?? 0);
 if ($requestedClassroomId <= 0 && isset($_SESSION['classroomId']))

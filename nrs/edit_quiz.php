@@ -169,7 +169,7 @@ else
     <?php endif; ?>
 <?php endif; ?>
 
-<form method="get" action="viewassignments.php">
+<form method="get" action="teacher.php">
     <input type="hidden" name="id" value="<?= $classroomId ?>" />
     <input type="submit" name="goback" value="Go Back" />
 </form>

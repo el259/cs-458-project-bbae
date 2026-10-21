@@ -121,7 +121,6 @@ oci_close($databaseConnection);
     </form>
 <?php endif; ?>
 
-<p><a href="viewassignments.php">Back to classroom</a></p>
 <p><a href="teacher.php">Back to dashboard</a></p>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>

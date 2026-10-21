@@ -21,7 +21,7 @@ echo "Classroom ID: " . var_export($classroomId, true) . "\n\n";
 if ($classroomId > 0) {
     $databaseConnection = hum_conn_no_login();
 
-    // Diagnostic using the same bind names as viewassignments.php
+    // Diagnostic using the same bind names as teacher.php
     $diagSql = '
         SELECT "CLASSROOM_ID", "USER_ID", "ROLE"
         FROM "CLASSROOM_MEMBERSHIP"
@@ -121,7 +121,7 @@ if ($classroomId > 0) {
     </ul>
 <?php endif; ?>
 
-<p><a href="viewassignments.php">Back to classroom</a></p>
+<p><a href="teacher.php">Back to classroom</a></p>
 <?php require __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -70,7 +70,7 @@ oci_close($classroomConnection);
 
     <h3>Your classes</h3>
 
-    <form action="viewassignments.php" method="post">
+    <form action="teacher.php" method="post">
 <?php
     for($i = 0; $i < count($classrooms); $i++) {
 ?>

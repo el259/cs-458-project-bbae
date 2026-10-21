@@ -1,59 +1,92 @@
 <?php
     session_start();
-
-    // Make sure the user is logged in
-    //   else, it sends to signin.php
     require __DIR__ . '/auth.php';
-    requireTeacher('dashboard');
+    requireAccount('dashboard');
     require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
-    if (!isset($_SESSION['user_id']))
-    {
-        header('Location: signin.php');
+    // Must run before the session value is read below (header.php is included too late)
+    if(isset($_POST['classroomId'])) {
+        $_SESSION['classroomId'] = intval($_POST['classroomId']);
+    }
+
+    if(!isset($_SESSION['classroomId'])) {
+        header('Location: student.php');
         exit();
     }
 
-    $classrooms = [];
+    $classroomId = intval($_SESSION['classroomId'] ?? -1);
+    $classroom = null;
+    $assignments = [];
+    $drills = [];
+    $error = '';
+    $isTeacher = !empty($_SESSION['teacher']);
 
-    $classroomConnection = hum_conn_no_login();
-    // $classroomSql = '
-    //     SELECT
-    //         c."CLASSROOM_ID",
-    //         c."CLASSROOM_NAME",
-    //         TO_CHAR(c."CREATED_AT", \'YYYY-MM-DD\') AS "CREATED_DATE",
-    //     FROM "CLASSROOM" c
-    //     JOIN "CLASSROOM_MEMBERSHIP" owner_membership
-    //       ON owner_membership."CLASSROOM_ID" = c."CLASSROOM_ID"
-    //      AND owner_membership."USER_ID" = :creator_id
-    //      AND owner_membership."ROLE" = \'teacher\'
-    //     ORDER BY "CREATED_DATE"
-    // ';
-    $classroomSql = '
-        SELECT CLASSROOM.CLASSROOM_ID, CLASSROOM.CLASSROOM_NAME
-        FROM CLASSROOM, CLASSROOM_MEMBERSHIP
-        WHERE CLASSROOM.CLASSROOM_ID = CLASSROOM_MEMBERSHIP.CLASSROOM_ID
-            AND CLASSROOM_MEMBERSHIP.USER_ID = :creator_id
-            AND CLASSROOM_MEMBERSHIP.ROLE = \'teacher\'
-            AND CLASSROOM.IS_ACTIVE = \'Y\'
-        ORDER BY CLASSROOM.CLASSROOM_NAME
-    ';
-    $classroomStatement = oci_parse($classroomConnection, $classroomSql);
-    $creatorId = $_SESSION['user_id'];
-    oci_bind_by_name($classroomStatement, ':creator_id', $creatorId);
+    if ($classroomId <= 0) {
+        $error = 'Classroom not found.';
+    } else {
+        $databaseConnection = hum_conn_no_login();
+        $classroomSql = '
+            SELECT c."CLASSROOM_NAME"
+            FROM "CLASSROOM" c
+            JOIN "CLASSROOM_MEMBERSHIP" m
+            ON m."CLASSROOM_ID" = c."CLASSROOM_ID"
+            WHERE c."CLASSROOM_ID" = :classroom_id
+            AND m."USER_ID" = :user_id
+        ';
+        $classroomStatement = oci_parse($databaseConnection, $classroomSql);
+        $userId = $_SESSION['user_id'];
+        oci_bind_by_name($classroomStatement, ':classroom_id', $classroomId);
+        oci_bind_by_name($classroomStatement, ':user_id', $userId);
 
-    if (oci_execute($classroomStatement))
-    {
-        while ($classroom = oci_fetch_assoc($classroomStatement))
-        {
-            $classrooms[] = [
-                'id' => $classroom['CLASSROOM_ID'],
-                'name' => $classroom['CLASSROOM_NAME']
-            ];
+        if (!oci_execute($classroomStatement)) {
+            $error = 'Unable to load the classroom.';
+        } else {
+            $classroom = oci_fetch_assoc($classroomStatement);
+            if ($classroom === false) {
+                $error = 'Classroom not found.';
+            } else {
+                // Quizzes
+                $assignmentsSQL = '
+                    SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT
+                    FROM QUIZ
+                    WHERE QUIZ.CLASSROOM_ID = :classroom_id
+                    ORDER BY QUIZ.DUE_AT
+                ';
+                $assignmentsStatement = oci_parse($databaseConnection, $assignmentsSQL);
+                oci_bind_by_name($assignmentsStatement, ':classroom_id', $classroomId);
+                if(oci_execute($assignmentsStatement, OCI_DEFAULT)) {
+                    while ($assignment = oci_fetch_assoc($assignmentsStatement)) {
+                        $assignments[] = [
+                            'id' => $assignment['QUIZ_ID'],
+                            'title' => $assignment['TITLE'],
+                            'due' => $assignment['DUE_AT']
+                        ];
+                    }
+                }
+                oci_free_statement($assignmentsStatement);
+
+                // Assigned drills
+                $drillSql = '
+                    SELECT d."DRILL_ID", d."TITLE"
+                    FROM "DRILL" d
+                    JOIN "CLASSROOM_DRILL" cd ON cd."DRILL_ID" = d."DRILL_ID"
+                    WHERE cd."CLASSROOM_ID" = :classroom_id
+                    ORDER BY d."TITLE"
+                ';
+                $drillStmt = oci_parse($databaseConnection, $drillSql);
+                oci_bind_by_name($drillStmt, ':classroom_id', $classroomId);
+                if (oci_execute($drillStmt)) {
+                    while ($d = oci_fetch_assoc($drillStmt)) {
+                        $drills[] = $d;
+                    }
+                }
+                oci_free_statement($drillStmt);
+            }
         }
-    }
 
-    oci_free_statement($classroomStatement);
-    oci_close($classroomConnection);
+        oci_free_statement($classroomStatement);
+        oci_close($databaseConnection);
+    }
 ?>
 
 
@@ -77,38 +110,84 @@
     <body>
         <?php require __DIR__ . '/header.php'; ?>
 
-        <h2>Your classes</h2>
+        <?php if ($error !== ''): ?>
+            <h2>Classroom</h2>
+            <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+        <?php else: ?>
+            <h2><?= htmlspecialchars($classroom['CLASSROOM_NAME'], ENT_QUOTES, 'UTF-8') ?></h2>
 
-        <form action="viewassignments.php" method="post">
-        <?php for($i = 0; $i < count($classrooms); $i++) { ?>
-            <div>
-                <button type="submit" class="classroom-link" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
+            <h3>Quizzes</h3>
+            <?php if (count($assignments) === 0): ?>
+                <p>No quizzes yet.</p>
+            <?php else: ?>
+                <form action="viewquiz.php" method="post">
+                    <?php foreach ($assignments as $assignment): 
+                        $dueLabel = 'No due date';
+                        if (!empty($assignment['due']))
+                        {
+                            $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
+                            if ($date instanceof DateTime)
+                            {
+                                $dueLabel = $date->format('F j, Y, g:i A');
+                            }
+                            else
+                            {
+                                $dueLabel = $assignment['due'];
+                            }
+                        }
+                        ?>
+                        <div>
+                            <button type="submit" class="classroom-link" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>"><?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?></button>
+                            <label for="<?= $assignment['id'] ?>">Due on: <?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </form>
+            <?php endif; ?>
+
+            <h3>Drills</h3>
+            <?php if (count($drills) === 0): ?>
+                <p>No drills assigned yet.</p>
+            <?php else: ?>
+                <ul>
+                    <?php foreach ($drills as $d): ?>
+                        <li>
+                            <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
+                                <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+            <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p>
+
+            <?php if ($isTeacher): ?>
+            <div class="quiz-actions">
+                <form method="get" action="create_quiz.php">
+                    <input type="hidden" name="id" value="<?= $classroomId ?>" />
+                    <input type="submit" value="Make quiz" />
+                </form> 
+                <form method="get" action="edit_quiz.php">
+                    <input type="hidden" name="id" value="<?= $classroomId ?>" />
+                    <input type="submit" value="Edit quiz" />
+                </form>
+                <form method="get" action="delete_quiz.php">
+                    <input type="hidden" name="id" value="<?= $classroomId ?>" />
+                    <input type="submit" value="Delete quiz" />
+                </form>
+                <form method="get" action="assign_content.php">
+                    <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
+                    <input type="submit" value="Assign textbook / drill" />
+                </form>
             </div>
-        <?php } ?>
-        </form>
+            <?php endif; ?>
+        <?php endif; ?>
 
-        <div class="quiz-actions">
-
-            <form method="get" action="create_classroom.php">
-                <input type="submit" value="Make classroom" />
-            </form>
-
-            <form method="get" action="archive_classrooms.php">
-                <input type="submit" value="Archive classroom" />
-            </form>
-
-            <form method="get" action="delete_classrooms.php">
-                <input type="submit" value="Delete classroom" />
-            </form>
-
-        </div>
         <div>
             <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
             <p><a href="manage_items.php">Free-floating Items</a></p>
             <p><a href="manage_drills.php">Manage Drills</a></p>
         </div>
         
-
         <br />
 
         <form method="post" action="signin.php">

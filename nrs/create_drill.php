@@ -14,28 +14,39 @@ $textbookId = intval($_GET['textbook_id'] ?? 0);
 $error = '';
 $databaseConnection = hum_conn_no_login();
 
-// Load available items (from textbook if specified, plus free-floating)
+// Load available items from the teacher's textbook, plus their free-floating items.
 $items = [];
 if ($textbookId > 0) {
     $sql = '
         SELECT "ITEM_ID", "TERM", "TRANSLATION", "TYPE"
         FROM "ITEM"
-        WHERE ("TEXTBOOK_ID" = :tb OR "TEXTBOOK_ID" IS NULL)
-          AND "CREATED_BY" = :uid
+        WHERE (
+                "TEXTBOOK_ID" = :p_textbook_id
+                AND EXISTS (
+                    SELECT 1
+                    FROM "TEXTBOOK"
+                    WHERE "TEXTBOOK_ID" = "ITEM"."TEXTBOOK_ID"
+                      AND "CREATED_BY" = :p_user_id
+                )
+            )
+            OR (
+                "TEXTBOOK_ID" IS NULL
+                AND "CREATED_BY" = :p_user_id
+            )
         ORDER BY "TERM"
     ';
     $stmt = oci_parse($databaseConnection, $sql);
-    oci_bind_by_name($stmt, ':tb', $textbookId);
-    oci_bind_by_name($stmt, ':uid', $userId);
+    oci_bind_by_name($stmt, ':p_textbook_id', $textbookId);
+    oci_bind_by_name($stmt, ':p_user_id', $userId);
 } else {
     $sql = '
         SELECT "ITEM_ID", "TERM", "TRANSLATION", "TYPE"
         FROM "ITEM"
-        WHERE "CREATED_BY" = :uid
+        WHERE "CREATED_BY" = :p_user_id
         ORDER BY "TERM"
     ';
     $stmt = oci_parse($databaseConnection, $sql);
-    oci_bind_by_name($stmt, ':uid', $userId);
+    oci_bind_by_name($stmt, ':p_user_id', $userId);
 }
 oci_execute($stmt);
 while ($row = oci_fetch_assoc($stmt)) {
@@ -56,27 +67,28 @@ if (isset($_POST['createDrill'])) {
             INSERT INTO "DRILL" (
                 "TITLE", "DESCRIPTION", "TEXTBOOK_ID", "CREATED_BY"
             ) VALUES (
-                :title, :desc, :tb, :uid
-            ) RETURNING "DRILL_ID" INTO :new_id
+                :p_title, :p_description, :p_textbook_id, :p_user_id
+            ) RETURNING "DRILL_ID" INTO :p_drill_id
         ';
         $stmt = oci_parse($databaseConnection, $sql);
         $newId = 0;
-        oci_bind_by_name($stmt, ':title', $title);
-        oci_bind_by_name($stmt, ':desc', $description);
-        oci_bind_by_name($stmt, ':tb', $textbookId);
-        oci_bind_by_name($stmt, ':uid', $userId);
-        oci_bind_by_name($stmt, ':new_id', $newId, 32);
+        $drillTextbookId = $textbookId > 0 ? $textbookId : null;
+        oci_bind_by_name($stmt, ':p_title', $title);
+        oci_bind_by_name($stmt, ':p_description', $description);
+        oci_bind_by_name($stmt, ':p_textbook_id', $drillTextbookId);
+        oci_bind_by_name($stmt, ':p_user_id', $userId);
+        oci_bind_by_name($stmt, ':p_drill_id', $newId, 32);
 
         if (oci_execute($stmt)) {
             // Link items
-            $linkSql = 'INSERT INTO "DRILL_ITEM" ("DRILL_ID", "ITEM_ID", "ORDER_INDEX") VALUES (:did, :iid, :ord)';
+            $linkSql = 'INSERT INTO "DRILL_ITEM" ("DRILL_ID", "ITEM_ID", "ORDER_INDEX") VALUES (:p_drill_id, :p_item_id, :p_order_index)';
             $linkStmt = oci_parse($databaseConnection, $linkSql);
             $order = 0;
             foreach ($selected as $itemId) {
                 $iid = intval($itemId);
-                oci_bind_by_name($linkStmt, ':did', $newId);
-                oci_bind_by_name($linkStmt, ':iid', $iid);
-                oci_bind_by_name($linkStmt, ':ord', $order);
+                oci_bind_by_name($linkStmt, ':p_drill_id', $newId);
+                oci_bind_by_name($linkStmt, ':p_item_id', $iid);
+                oci_bind_by_name($linkStmt, ':p_order_index', $order);
                 oci_execute($linkStmt, OCI_NO_AUTO_COMMIT);
                 $order++;
             }
@@ -87,7 +99,7 @@ if (isset($_POST['createDrill'])) {
             header('Location: manage_drills.php');
             exit();
         } else {
-            $error = 'Failed to create drill.';
+            $error = oci_error($stmt)['message'] ?? 'Failed to create drill.';
             oci_rollback($databaseConnection);
         }
         oci_free_statement($stmt);

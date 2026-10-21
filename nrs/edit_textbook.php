@@ -71,24 +71,25 @@ if (isset($_POST['addItem'])) {
                 "UNIT_ID", "TEXTBOOK_ID", "TYPE", "LANGUAGE", "TERM",
                 "TRANSLATION", "EXAMPLE", "CREATED_BY"
             ) VALUES (
-                :unit, :tb, :type, :lang, :term, :trans, :ex, :uid
+                :p_unit_id, :p_textbook_id, :p_item_type, :p_language,
+                :p_term, :p_translation, :p_example, :p_created_by
             )
         ';
         $stmt = oci_parse($databaseConnection, $sql);
-        oci_bind_by_name($stmt, ':unit', $unitId);
-        oci_bind_by_name($stmt, ':tb', $textbookId);
-        oci_bind_by_name($stmt, ':type', $type);
-        oci_bind_by_name($stmt, ':lang', $textbook['LANGUAGE']);
-        oci_bind_by_name($stmt, ':term', $term);
-        oci_bind_by_name($stmt, ':trans', $translation);
-        oci_bind_by_name($stmt, ':ex', $example);
-        oci_bind_by_name($stmt, ':uid', $userId);
+        oci_bind_by_name($stmt, ':p_unit_id', $unitId);
+        oci_bind_by_name($stmt, ':p_textbook_id', $textbookId);
+        oci_bind_by_name($stmt, ':p_item_type', $type);
+        oci_bind_by_name($stmt, ':p_language', $textbook['LANGUAGE']);
+        oci_bind_by_name($stmt, ':p_term', $term);
+        oci_bind_by_name($stmt, ':p_translation', $translation);
+        oci_bind_by_name($stmt, ':p_example', $example);
+        oci_bind_by_name($stmt, ':p_created_by', $userId);
 
         if (oci_execute($stmt)) {
             oci_commit($databaseConnection);
             $success = 'Item added.';
         } else {
-            $error = 'Failed to add item.';
+            $error = oci_error($stmt)['message'] ?? 'Failed to add item.';
             oci_rollback($databaseConnection);
         }
         oci_free_statement($stmt);
@@ -119,8 +120,8 @@ if (count($units) > 0) {
     oci_bind_by_name($itemStmt, ':tb', $textbookId);
     oci_execute($itemStmt);
     while ($it = oci_fetch_assoc($itemStmt)) {
-        $uid = $it['UNIT_ID'] ?? 0;
-        $itemsByUnit[$uid][] = $it;
+        $u_id = $it['UNIT_ID'] ?? 0;
+        $itemsByUnit[$u_id][] = $it;
     }
     oci_free_statement($itemStmt);
 }

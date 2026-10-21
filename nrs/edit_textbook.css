@@ -1,0 +1,11 @@
+form, h2, h3, p {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  form, h2, h3, p {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

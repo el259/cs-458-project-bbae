@@ -88,7 +88,8 @@ else
                 'editing' => -1,
                 'classroom_id' => $classroomId,
                 'due_at' => $quiz['DUE_AT'] ?: null,
-                'quiz_id' => intval($quiz['QUIZ_ID'])
+                'quiz_id' => intval($quiz['QUIZ_ID']),
+                'pdf' => $decoded['pdf'] ?? ''
             ];
 
             oci_free_statement($loadStatement);

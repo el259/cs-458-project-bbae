@@ -103,6 +103,13 @@
             </form>
 
         </div>
+        <div>
+            <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
+            <p><a href="manage_items.php">Free-floating Items</a></p>
+            <p><a href="manage_drills.php">Manage Drills</a></p>
+        </div>
+        
+
         <br />
 
         <form method="post" action="signin.php">

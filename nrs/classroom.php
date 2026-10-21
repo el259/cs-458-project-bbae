@@ -8,6 +8,8 @@ $classroomId = intval($_GET['id'] ?? 0);
 $classroom = null;
 $students = [];
 $assignments = [];
+$textbooks = [];
+$drills = [];
 $error = '';
 
 if ($classroomId <= 0) {
@@ -35,6 +37,7 @@ if ($classroomId <= 0) {
         if ($classroom === false) {
             $error = 'Classroom not found.';
         } else {
+            // Students
             $studentSql = '
                 SELECT u."FIRST_NAME", u."EMAIL"
                 FROM "CLASSROOM_MEMBERSHIP" m
@@ -49,7 +52,9 @@ if ($classroomId <= 0) {
             while ($student = oci_fetch_assoc($studentStatement)) {
                 $students[] = $student['FIRST_NAME'];
             }
+            oci_free_statement($studentStatement);
 
+            // Quizzes (existing)
             $assignmentSql = '
                 SELECT q."TITLE"
                 FROM "CLASSROOM_ASSIGNMENT" a
@@ -63,9 +68,41 @@ if ($classroomId <= 0) {
             while ($assignment = oci_fetch_assoc($assignmentStatement)) {
                 $assignments[] = $assignment['TITLE'];
             }
-
             oci_free_statement($assignmentStatement);
-            oci_free_statement($studentStatement);
+
+            // Assigned textbooks
+            $tbSql = '
+                SELECT t."TITLE"
+                FROM "TEXTBOOK" t
+                JOIN "CLASSROOM_TEXTBOOK" ct ON ct."TEXTBOOK_ID" = t."TEXTBOOK_ID"
+                WHERE ct."CLASSROOM_ID" = :classroom_id
+                ORDER BY t."TITLE"
+            ';
+            $tbStmt = oci_parse($databaseConnection, $tbSql);
+            oci_bind_by_name($tbStmt, ':classroom_id', $classroomId);
+            if (oci_execute($tbStmt)) {
+                while ($row = oci_fetch_assoc($tbStmt)) {
+                    $textbooks[] = $row['TITLE'];
+                }
+            }
+            oci_free_statement($tbStmt);
+
+            // Assigned drills
+            $drillSql = '
+                SELECT d."TITLE"
+                FROM "DRILL" d
+                JOIN "CLASSROOM_DRILL" cd ON cd."DRILL_ID" = d."DRILL_ID"
+                WHERE cd."CLASSROOM_ID" = :classroom_id
+                ORDER BY d."TITLE"
+            ';
+            $drillStmt = oci_parse($databaseConnection, $drillSql);
+            oci_bind_by_name($drillStmt, ':classroom_id', $classroomId);
+            if (oci_execute($drillStmt)) {
+                while ($row = oci_fetch_assoc($drillStmt)) {
+                    $drills[] = $row['TITLE'];
+                }
+            }
+            oci_free_statement($drillStmt);
         }
     }
 
@@ -109,9 +146,9 @@ if ($classroomId <= 0) {
         </ul>
     <?php endif; ?>
 
-    <h3>Assignments</h3>
+    <h3>Quizzes</h3>
     <?php if (count($assignments) === 0): ?>
-        <p>No assignments yet.</p>
+        <p>No quizzes yet.</p>
     <?php else: ?>
         <ul>
             <?php foreach ($assignments as $assignment): ?>
@@ -119,6 +156,30 @@ if ($classroomId <= 0) {
             <?php endforeach; ?>
         </ul>
     <?php endif; ?>
+
+    <h3>Assigned Textbooks</h3>
+    <?php if (count($textbooks) === 0): ?>
+        <p>None.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($textbooks as $tb): ?>
+                <li><?= htmlspecialchars($tb, ENT_QUOTES, 'UTF-8') ?></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+
+    <h3>Assigned Drills</h3>
+    <?php if (count($drills) === 0): ?>
+        <p>None.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($drills as $d): ?>
+                <li><?= htmlspecialchars($d, ENT_QUOTES, 'UTF-8') ?></li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+
+    <p><a href="assign_content.php?classroom_id=<?= $classroomId ?>">Assign textbook or drill</a></p>
 <?php endif; ?>
 
 <form method="get" action="teacher.php">

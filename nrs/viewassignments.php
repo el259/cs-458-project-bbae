@@ -15,7 +15,9 @@ if(!isset($_SESSION['classroomId'])) {
 $classroomId = intval($_SESSION['classroomId'] ?? -1);
 $classroom = null;
 $assignments = [];
+$drills = [];
 $error = '';
+$isTeacher = !empty($_SESSION['teacher']);
 
 if ($classroomId <= 0) {
     $error = 'Classroom not found.';
@@ -41,6 +43,7 @@ if ($classroomId <= 0) {
         if ($classroom === false) {
             $error = 'Classroom not found.';
         } else {
+            // Quizzes
             $assignmentsSQL = '
                 SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT
                 FROM QUIZ
@@ -58,8 +61,24 @@ if ($classroomId <= 0) {
                     ];
                 }
             }
-
             oci_free_statement($assignmentsStatement);
+
+            // Assigned drills
+            $drillSql = '
+                SELECT d."DRILL_ID", d."TITLE"
+                FROM "DRILL" d
+                JOIN "CLASSROOM_DRILL" cd ON cd."DRILL_ID" = d."DRILL_ID"
+                WHERE cd."CLASSROOM_ID" = :classroom_id
+                ORDER BY d."TITLE"
+            ';
+            $drillStmt = oci_parse($databaseConnection, $drillSql);
+            oci_bind_by_name($drillStmt, ':classroom_id', $classroomId);
+            if (oci_execute($drillStmt)) {
+                while ($d = oci_fetch_assoc($drillStmt)) {
+                    $drills[] = $d;
+                }
+            }
+            oci_free_statement($drillStmt);
         }
     }
 
@@ -86,9 +105,9 @@ if ($classroomId <= 0) {
 <?php else: ?>
     <h2><?= htmlspecialchars($classroom['CLASSROOM_NAME'], ENT_QUOTES, 'UTF-8') ?></h2>
 
-    <h3>Assignments</h3>
+    <h3>Quizzes</h3>
     <?php if (count($assignments) === 0): ?>
-        <p>No assignments yet.</p>
+        <p>No quizzes yet.</p>
     <?php else: ?>
         <form action="quiz.php" method="post">
             <?php foreach ($assignments as $assignment): 
@@ -102,7 +121,6 @@ if ($classroomId <= 0) {
                     }
                     else
                     {
-                        // Fallback if Oracle returns a different format
                         $dueLabel = $assignment['due'];
                     }
                 }
@@ -113,8 +131,25 @@ if ($classroomId <= 0) {
                 </div>
             <?php endforeach; ?>
         </form>
-    <?php endif; 
-        if(!empty($_SESSION['teacher'])) { ?>
+    <?php endif; ?>
+
+    <h3>Drills</h3>
+    <?php if (count($drills) === 0): ?>
+        <p>No drills assigned yet.</p>
+    <?php else: ?>
+        <ul>
+            <?php foreach ($drills as $d): ?>
+                <li>
+                    <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
+                        <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+    <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p>
+
+    <?php if ($isTeacher): ?>
     <div class="quiz-actions">
         <form method="get" action="create_quiz.php">
             <input type="hidden" name="id" value="<?= $classroomId ?>" />
@@ -128,11 +163,15 @@ if ($classroomId <= 0) {
             <input type="hidden" name="id" value="<?= $classroomId ?>" />
             <input type="submit" value="Delete quiz" />
         </form>
+        <form method="get" action="assign_content.php">
+            <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
+            <input type="submit" value="Assign textbook / drill" />
+        </form>
     </div>
-    <?php } ?>
+    <?php endif; ?>
 <?php endif; ?>
 
-<form method="get" action="student.php">
+<form method="get" action="<?= $isTeacher ? 'teacher.php' : 'student.php' ?>">
     <input type="submit" name="goback" value="Go Back" />
 </form>
 

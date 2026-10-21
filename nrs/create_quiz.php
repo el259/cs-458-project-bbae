@@ -22,7 +22,8 @@ if (isset($_GET['id']) && intval($_GET['id']) > 0)
         'editing' => -1,
         'classroom_id' => intval($_GET['id']),
         'due_at' => null,
-        'quiz_id' => null
+        'quiz_id' => null,
+        'pdf' => ''
     ];
 }
 
@@ -66,12 +67,16 @@ if ($requestedClassroomId > 0)
                 'questions' => [],
                 'editing' => -1,
                 'classroom_id' => $requestedClassroomId,
-                'due_at' => null
+                'due_at' => null,
+                'pdf' => ''
             ];
         }
         else
         {
             $_SESSION['quiz']['classroom_id'] = $requestedClassroomId;
+            if (!isset($_SESSION['quiz']['pdf'])) {
+                $_SESSION['quiz']['pdf'] = '';
+            }
         }
     }
     oci_free_statement($verifyStatement);
@@ -86,7 +91,8 @@ if (!isset($_SESSION['quiz']))
         'questions' => [],
         'editing' => -1,
         'classroom_id' => null,
-        'due_at' => null
+        'due_at' => null,
+        'pdf' => ''
     ];
 }
 
@@ -103,6 +109,11 @@ if (!isset($_SESSION['quiz']['classroom_id']))
 if (!isset($_SESSION['quiz']['due_at']))
 {
     $_SESSION['quiz']['due_at'] = null;
+}
+
+if (!isset($_SESSION['quiz']['pdf']))
+{
+    $_SESSION['quiz']['pdf'] = '';
 }
 
 
@@ -422,6 +433,10 @@ if (isset($_POST['createQuiz']))
     $dueAt = trim($_POST['dueAt'] ?? ($_SESSION['quiz']['due_at'] ?? ''));
     $_SESSION['quiz']['due_at'] = $dueAt !== '' ? $dueAt : null;
 
+    // Capture PDF URL
+    $pdfUrl = trim($_POST['pdf'] ?? ($_SESSION['quiz']['pdf'] ?? ''));
+    $_SESSION['quiz']['pdf'] = $pdfUrl;
+
     if ($quizName === '' || count($questions) === 0)
     {
         $error = 'You must give the quiz a name and add at least one question.';
@@ -490,6 +505,7 @@ if (isset($_POST['createQuiz']))
                     {
                         $storedQuiz = [
                             'name' => $quizName,
+                            'pdf' => $pdfUrl,
                             'questions' => $questions
                         ];
                         $quizJson = json_encode($storedQuiz, JSON_UNESCAPED_UNICODE);
@@ -850,20 +866,32 @@ if (count($_SESSION['quiz']['questions']) > 0)
 
 
 <form method="post" action="create_quiz.php" class="create-block">
+    <div>
+        <label for="pdf">Reference PDF URL <span class="optional">(optional)</span></label>
+        <input
+            type="text"
+            name="pdf"
+            id="pdf"
+            placeholder="uploads/pdfs/chapter1.pdf or https://..."
+            value="<?= htmlspecialchars($_SESSION['quiz']['pdf'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+        />
+    </div>
+
+    <div>
+        <label for="dueAt">Due date <span class="optional">(optional)</span></label>
+        <input
+            type="datetime-local"
+            name="dueAt"
+            id="dueAt"
+            value="<?= htmlspecialchars($_SESSION['quiz']['due_at'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+        />
+    </div>
+
     <input
-        type="datetime-local"
-        name="dueAt"
-        id="dueAt"
-        value="<?= htmlspecialchars($_SESSION['quiz']['due_at'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
+        type="submit"
+        name="createQuiz"
+        value="<?= !empty($_SESSION['quiz']['quiz_id']) ? 'Save Quiz' : 'Create Quiz' ?> (<?= count($_SESSION['quiz']['questions']) ?> questions)"
     />
-</div>
-
-<input
-    type="submit"
-    name="createQuiz"
-    value="<?= !empty($_SESSION['quiz']['quiz_id']) ? 'Save Quiz' : 'Create Quiz' ?> (<?= count($_SESSION['quiz']['questions']) ?> questions)"
-/>
-
 </form>
 
 

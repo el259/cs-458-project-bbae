@@ -1,4 +1,15 @@
 /* Quiz taking styles for description + image */
+body > *:not(.site-header):not(footer) {
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+
+@media (min-width: 768px) {
+  body > *:not(.site-header):not(footer) {
+    margin-left: 2rem;
+    margin-right: 2rem;
+  }
+}
 
 .quiz-question {
     margin: 1.25rem 0 1.5rem;

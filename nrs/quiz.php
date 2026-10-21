@@ -11,6 +11,7 @@ $questions = [];
 $guesses = [];
 $totalCorrect = 0;
 $showScore = false;
+$pdfUrl = '';
 
 if ($quizId <= 0) {
     $error = 'No quiz selected. Try again.';
@@ -43,6 +44,8 @@ if ($quizId <= 0) {
                 !is_array($data['questions'])) {
                 $error = 'Quiz data is invalid.';
             } else {
+                $pdfUrl = isset($data['pdf']) ? (string) $data['pdf'] : '';
+
                 foreach ($data['questions'] as $index => $rawQuestion) {
                     $inputType = 'multiple-choice';
                     $fillAnswer = '';
@@ -150,6 +153,15 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="global.css" />
     <link rel="stylesheet" href="quiz.css" />
+    <style>
+        .quiz-with-pdf { display: flex; gap: 1rem; height: calc(100vh - 140px); }
+        .pdf-panel { flex: 1; display: flex; flex-direction: column; border: 1px solid #ccc; min-width: 280px; }
+        .pdf-panel.hidden { display: none; }
+        .pdf-header { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.6rem; background: #f5f5f5; border-bottom: 1px solid #ccc; font-size: 0.9rem; }
+        .toggle-btn { padding: 0.2rem 0.6rem; cursor: pointer; }
+        .questions-panel { flex: 1; overflow-y: auto; }
+        #pdfFrame { flex: 1; border: none; }
+    </style>
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -168,58 +180,85 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses'])) {
         <p>Percent: <?= htmlspecialchars((string) $percent, ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
 
-    <form method="post" action="quiz.php">
-        <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />
-        <?php foreach ($questions as $questionIndex => $question): ?>
-            <div class="quiz-question">
-                <p class="q-text"><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
-                <?php if (!empty($question['description'])): ?>
-                    <p class="q-description"><?= htmlspecialchars($question['description'], ENT_QUOTES, 'UTF-8') ?></p>
-                <?php endif; ?>
-                <?php if (!empty($question['image'])): ?>
-                    <img class="q-image" src="<?= htmlspecialchars($question['image'], ENT_QUOTES, 'UTF-8') ?>" alt="Question image" />
-                <?php endif; ?>
-                <?php if ($question['inputType'] === 'fill-in'): ?>
-                    <input
-                        type="text"
-                        name="guesses[<?= $questionIndex ?>]"
-                        value="<?= isset($guesses[$questionIndex]) ? htmlspecialchars((string) $guesses[$questionIndex], ENT_QUOTES, 'UTF-8') : '' ?>"
-                        required="required"
-                    />
-                <?php else: ?>
-                    <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
-                        <?php $optionId = 'q' . $questionIndex . 'o' . $answerIndex; ?>
-                        <div>
-                            <input
-                                type="radio"
-                                name="guesses[<?= $questionIndex ?>]"
-                                value="<?= $answerIndex ?>"
-                                id="<?= $optionId ?>"
-                                required="required"
-                                <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
-                            />
-                            <label for="<?= $optionId ?>">
-                                <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
-                            </label>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-
-                <?php if ($showScore): ?>
-                    <?php if ($question['verdict'] === 'exact'): ?>
-                        <p class="correct">Correct!</p>
-                    <?php elseif ($question['verdict'] === 'diacritic'): ?>
-                        <p class="correct">Accepted. Accent missing: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
-                    <?php elseif ($question['verdict'] === 'typo'): ?>
-                        <p class="correct">Accepted. Expected: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
-                    <?php else: ?>
-                        <p class="incorrect">Incorrect</p>
-                    <?php endif; ?>
-                <?php endif; ?>
+    <div class="<?= $pdfUrl !== '' ? 'quiz-with-pdf' : '' ?>">
+        <?php if ($pdfUrl !== ''): ?>
+            <div class="pdf-panel" id="pdfPanel">
+                <div class="pdf-header">
+                    <span>Reference PDF</span>
+                    <button type="button" id="togglePdf" class="toggle-btn">Hide PDF</button>
+                </div>
+                <iframe id="pdfFrame" src="<?= htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8') ?>"></iframe>
             </div>
-        <?php endforeach; ?>
-        <input type="submit" value="Submit" />
-    </form>
+        <?php endif; ?>
+
+        <div class="questions-panel">
+            <form method="post" action="quiz.php">
+                <input type="hidden" name="quizId" value="<?= htmlspecialchars((string) $quizId, ENT_QUOTES, 'UTF-8') ?>" />
+                <?php foreach ($questions as $questionIndex => $question): ?>
+                    <div class="quiz-question">
+                        <p class="q-text"><?= htmlspecialchars($question['question'], ENT_QUOTES, 'UTF-8') ?></p>
+                        <?php if (!empty($question['description'])): ?>
+                            <p class="q-description"><?= htmlspecialchars($question['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($question['image'])): ?>
+                            <img class="q-image" src="<?= htmlspecialchars($question['image'], ENT_QUOTES, 'UTF-8') ?>" alt="Question image" />
+                        <?php endif; ?>
+                        <?php if ($question['inputType'] === 'fill-in'): ?>
+                            <input
+                                type="text"
+                                name="guesses[<?= $questionIndex ?>]"
+                                value="<?= isset($guesses[$questionIndex]) ? htmlspecialchars((string) $guesses[$questionIndex], ENT_QUOTES, 'UTF-8') : '' ?>"
+                                required="required"
+                            />
+                        <?php else: ?>
+                            <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
+                                <?php $optionId = 'q' . $questionIndex . 'o' . $answerIndex; ?>
+                                <div>
+                                    <input
+                                        type="radio"
+                                        name="guesses[<?= $questionIndex ?>]"
+                                        value="<?= $answerIndex ?>"
+                                        id="<?= $optionId ?>"
+                                        required="required"
+                                        <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
+                                    />
+                                    <label for="<?= $optionId ?>">
+                                        <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+
+                        <?php if ($showScore): ?>
+                            <?php if ($question['verdict'] === 'exact'): ?>
+                                <p class="correct">Correct!</p>
+                            <?php elseif ($question['verdict'] === 'diacritic'): ?>
+                                <p class="correct">Accepted. Accent missing: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <?php elseif ($question['verdict'] === 'typo'): ?>
+                                <p class="correct">Accepted. Expected: <?= htmlspecialchars($question['answer'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <?php else: ?>
+                                <p class="incorrect">Incorrect</p>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+                <input type="submit" value="Submit" />
+            </form>
+        </div>
+    </div>
+
+    <?php if ($pdfUrl !== ''): ?>
+    <script>
+    const toggleBtn = document.getElementById('togglePdf');
+    const pdfPanel = document.getElementById('pdfPanel');
+    if (toggleBtn && pdfPanel) {
+        toggleBtn.addEventListener('click', function () {
+            pdfPanel.classList.toggle('hidden');
+            toggleBtn.textContent = pdfPanel.classList.contains('hidden') ? 'Show PDF' : 'Hide PDF';
+        });
+    }
+    </script>
+    <?php endif; ?>
 <?php endif; ?>
 
 <?php require __DIR__ . '/footer.php'; ?>

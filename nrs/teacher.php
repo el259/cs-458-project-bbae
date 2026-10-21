@@ -73,7 +73,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="global.css" />
         <link rel="stylesheet" href="teacher.css" />
-        <script src="teacher_page.js"></script>
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -119,4 +118,5 @@
 
         <?php require __DIR__ . '/footer.php'; ?>
     </body>
+    <script src="nav_classroom.js"></script>
 </html>

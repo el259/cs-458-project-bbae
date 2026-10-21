@@ -235,7 +235,7 @@ footer p {
 
 .site-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: left;
     align-items: center;
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
@@ -245,6 +245,8 @@ footer p {
 }
 .site-header .right-side {
     display: flex;
+    margin-left: auto;
+    margin-right: 0;
     justify-content: flex-end;
     align-items: center;
 }

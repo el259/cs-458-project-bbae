@@ -9,9 +9,24 @@
         $_SESSION['classroomId'] = intval($_POST['classroomId']);
     }
 
+    // No classroom selected yet: default to the user's first one
     if(!isset($_SESSION['classroomId'])) {
-        header('Location: student.php');
-        exit();
+        $firstConnection = hum_conn_no_login();
+        $firstStatement = oci_parse($firstConnection, '
+            SELECT MIN("CLASSROOM_ID") AS "CLASSROOM_ID"
+            FROM "CLASSROOM_MEMBERSHIP"
+            WHERE "USER_ID" = :user_id
+        ');
+        $firstUserId = $_SESSION['user_id'];
+        oci_bind_by_name($firstStatement, ':user_id', $firstUserId);
+        if (oci_execute($firstStatement)) {
+            $firstRow = oci_fetch_assoc($firstStatement);
+            if ($firstRow && $firstRow['CLASSROOM_ID'] !== null) {
+                $_SESSION['classroomId'] = intval($firstRow['CLASSROOM_ID']);
+            }
+        }
+        oci_free_statement($firstStatement);
+        oci_close($firstConnection);
     }
 
     $classroomId = intval($_SESSION['classroomId'] ?? -1);

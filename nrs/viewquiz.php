@@ -66,7 +66,7 @@ if ($quizId <= 0) {
 <body>
 <?php require __DIR__ . '/header.php'; ?>
 
-<form method="get" action="viewassignments.php">
+<form method="get" action="teacher.php">
     <input type="submit" value="Go Back" />
 </form>
 

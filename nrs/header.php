@@ -50,7 +50,7 @@
         <p>HumGlot</p>
     </a>
     <button class="classroom-button" onclick="toggleClassroomPopup()">
-        <?= htmlspecialchars($currentClassroomName, ENT_QUOTES, 'UTF-8') ?>
+        <h1><?= htmlspecialchars($currentClassroomName, ENT_QUOTES, 'UTF-8') ?></h1>
         <svg width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <g>
                 <path fill="none" d="M0 0h24v24H0z"/>

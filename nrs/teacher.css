@@ -1,42 +1,88 @@
-form, h2, p {
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-@media (min-width: 768px) {
-  form, h2, p {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
-}
-
-/*
-.table-scroll {
-  margin-left: 1rem;
-  margin-right: 1rem;
-  margin-bottom: 1.5rem;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  margin: 0;
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.quiz-actions {
+.main {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
+  gap: 1rem;
 }
 
-.quiz-actions form {
-  display: inline-block;
-  margin: 0;
-  width: auto;
+.classroom-info {
+  height: calc(100vh - 9.5rem);
+  width: calc(5rem + 20%);
+  min-width: fit-content;
+  background: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-left: 1rem;
 }
-*/
+
+.list-area {
+  flex: 1;
+
+  height: calc(100vh - 7.5rem);
+  overflow-y: scroll;
+  scrollbar-width: auto;
+}
+
+
+.quiz-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.quiz-item {
+  padding: 1rem;
+  width: 20rem;
+  height: 12rem;
+  background: #fff;
+  border-radius: 0.5rem;
+}
+.quiz-item .row {
+  display: flex;
+  align-items: center;
+}
+
+.quiz-item h3 {
+  margin: 0;
+}
+.quiz-item .edit {
+  margin: 0;
+  margin-left: auto;
+  margin-right: 0;
+  padding: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.quiz-item .edit svg {
+  width: 1.5rem;
+  height: 1.5rem; 
+}
+.quiz-item .edit:hover {
+    background: #d5d5d5;
+    border: 1px solid #d5d5d5;
+}
+.quiz-item .edit:focus,
+.quiz-item .edit:active {
+    outline: none;
+    border: 1px solid #c2c2c2;
+}
+
+
+@media (max-width: 700px) {
+  .main {
+    flex-direction: column;
+  }
+  .classroom-info {
+    width: calc(100% - 4rem);
+    height: fit-content;
+  }
+  .list-area {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    height: fit-content;
+    overflow-y: visible;
+  }
+}

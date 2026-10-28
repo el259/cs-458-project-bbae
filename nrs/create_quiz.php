@@ -263,7 +263,7 @@ if (isset($_POST['addQuestion']))
             else
             {
                 $ext = image_type_to_extension($info[2], false) ?: 'jpg';
-                $uploadDir = __DIR__ . '/uploads/quiz_images';
+                $uploadDir = '/var/humglot/private/quiz_images';
                 if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0775, true))
                 {
                     $error = 'Cannot create upload folder: ' . $uploadDir . '. Create it and make it writable by the web server.';
@@ -278,7 +278,7 @@ if (isset($_POST['addQuestion']))
                     $dest = $uploadDir . '/' . $filename;
                     if (move_uploaded_file($tmp, $dest))
                     {
-                        $imagePath = 'uploads/quiz_images/' . $filename;
+                        $imagePath = 'private_image.php?name=' . rawurlencode($filename);
                     }
                     else
                     {

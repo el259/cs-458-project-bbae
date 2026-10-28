@@ -1,0 +1,23 @@
+services:
+  humglot:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: humglot:dev
+    env_file:
+      - .env
+    environment:
+      TNS_ADMIN: /opt/oracle/wallet
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      # Editable working tree; changes are immediately visible in the browser.
+      - ./nrs:/var/www/humglot/nrs:rw
+      # Wallet must be supplied privately and never committed to Git.
+      - ./.local/oracle-wallet:/opt/oracle/wallet:ro
+      # Docker-managed persistent uploads, outside Apache's document root.
+      - humglot_dev_uploads:/var/humglot/private
+    restart: unless-stopped
+
+volumes:
+  humglot_dev_uploads:

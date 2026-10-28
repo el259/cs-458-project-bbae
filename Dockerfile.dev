@@ -1,0 +1,100 @@
+# syntax=docker/dockerfile:1
+FROM php:8.3-apache
+
+ARG TARGETARCH
+ARG IC_VERSION=23.26.4.0.0
+ARG IC_BUILD=2326400
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      autoconf build-essential curl ca-certificates unzip libaio1t64 libnsl2; \
+    rm -rf /var/lib/apt/lists/*; \
+    case "${TARGETARCH}" in \
+      amd64) oracle_arch=x64; \
+        basic_sha=cab59aa3b411b3b50898e456fa9aabfe48d67e25cbc1bb23303800390ce7de26; \
+        sdk_sha=75b7b72c378693eca8f3e0502f2d035612baec43be1e75760839cc87c437fb01 ;; \
+      arm64) oracle_arch=arm64; \
+        basic_sha=688df426cabb4e5945e8409ae022acd16b92ff06582c8d93af2f41e3fb9a42f3; \
+        sdk_sha=8a7797a5cc72392eb453f28dd5329ae23133cefd51915147cf6631812684a7b2 ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    mkdir -p /opt/oracle; \
+    for pkg in basic sdk; do \
+      filename="instantclient-${pkg}-linux.${oracle_arch}-${IC_VERSION}.zip"; \
+      curl -fSL --retry 3 --output "/tmp/${filename}" \
+        "https://download.oracle.com/otn_software/linux/instantclient/${IC_BUILD}/${filename}"; \
+      if [ "$pkg" = basic ]; then expected="$basic_sha"; else expected="$sdk_sha"; fi; \
+      echo "${expected}  /tmp/${filename}" | sha256sum -c -; \
+      unzip -oq "/tmp/${filename}" -d /opt/oracle; \
+      rm -f "/tmp/${filename}"; \
+    done; \
+    ln -s /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/libaio.so.1t64 \
+      /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/libaio.so.1; \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf; \
+    ldconfig; \
+    printf 'instantclient,/opt/oracle/instantclient_23_26\n' | pecl install oci8-3.4.1; \
+    docker-php-ext-enable oci8; \
+    a2enmod rewrite
+
+ENV TNS_ADMIN=/opt/oracle/wallet
+
+# The repository contains nrs/; Compose bind-mounts it here for live edits.
+RUN mkdir -p /var/www/humglot/nrs /var/humglot/private/quiz_images \
+    && chown -R www-data:www-data /var/humglot/private \
+    && sed -ri 's!/var/www/html!/var/www/humglot/nrs!g' /etc/apache2/sites-available/000-default.conf \
+    && printf '%s\n' \
+      '<Directory "/var/www/humglot/nrs">' \
+      '    Options -Indexes' \
+      '    AllowOverride None' \
+      '    Require all granted' \
+      '</Directory>' \
+      '<Directory "/var/www/humglot/nrs/data">' \
+      '    Require all denied' \
+      '</Directory>' \
+      '<Directory "/var/www/humglot/nrs/files">' \
+      '    Require all denied' \
+      '</Directory>' \
+      '<Directory "/var/www/humglot/nrs/uploads">' \
+      '    Require all denied' \
+      '</Directory>' \
+      '<FilesMatch "(?i)(^\\.|\\.json$|\\.sql$|\\.sh$|\\.bak$|\\.old$|\\.env$|\\.ini$|\\.log$)">' \
+      '    Require all denied' \
+      '</FilesMatch>' \
+      'ServerTokens Prod' \
+      'ServerSignature Off' \
+      > /etc/apache2/conf-available/humglot-dev.conf \
+    && a2enconf humglot-dev
+
+# Local replacement for the university-specific Oracle connection helper.
+# All credentials come from Compose's env_file, never this image.
+RUN cat > /var/www/humglot/hum_conn_no_login.php <<'PHP'
+<?php
+function hum_conn_no_login() {
+    $conn = @oci_connect(
+        getenv('DB_USERNAME'),
+        getenv('DB_PASSWORD'),
+        getenv('DB_CONNECT_STRING'),
+        'AL32UTF8'
+    );
+    if (!$conn) {
+        $error = oci_error();
+        error_log('Oracle connection failed: ' . ($error['message'] ?? 'unknown error'));
+        http_response_code(503);
+        exit('Database unavailable.');
+    }
+    return $conn;
+}
+PHP
+
+RUN printf '%s\n' \
+    'display_errors=On' \
+    'display_startup_errors=On' \
+    'log_errors=On' \
+    'expose_php=Off' \
+    'session.cookie_httponly=1' \
+    'session.cookie_secure=0' \
+    'session.use_strict_mode=1' \
+    > /usr/local/etc/php/conf.d/humglot-dev.ini
+
+WORKDIR /var/www/humglot/nrs

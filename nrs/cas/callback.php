@@ -17,6 +17,7 @@ try {
     $_SESSION['account'] = $username;
     $_SESSION['user_id'] = $account['user_id'];
     $_SESSION['teacher'] = $account['is_admin'];
+    $_SESSION['auth_provider'] = 'humboldt-cas';
 
     $next = casNext($_SESSION['cas_next'] ?? null);
     unset($_SESSION['cas_next']);

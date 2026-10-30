@@ -16,3 +16,6 @@ https://humglot.blakeculbertson.com/cas/callback.php
 ```
 
 Run `nrs/data/cas-migration.sql` against the application schema before enabling CAS. Copy the CAS settings from `.env.example` into the deployment environment. Use the `cas-dev.humboldt.edu` URLs for testing, then switch the login, logout, and validation URLs together to `cas.humboldt.edu` for production. The application validates tickets server-side and fails closed when CAS configuration is missing or invalid.
+
+Local username/password sign-in remains available while CAS is being tested. Set
+`LOCAL_AUTH_ENABLED=false` to hide local sign-in after CAS is fully operational.

@@ -12,7 +12,7 @@ if (!empty($_SESSION['teacher'])) {
     exit();
 }
 
-$classrooms = [];
+$studentClassrooms = [];
 
 $classroomConnection = hum_conn_no_login();
 $classroomSql = '
@@ -29,7 +29,7 @@ oci_bind_by_name($classroomStatement, ':student_id', $studentId);
 
 if (oci_execute($classroomStatement, OCI_DEFAULT)) {
     while ($classroom = oci_fetch_assoc($classroomStatement)) {
-        $classrooms[] = [
+        $studentClassrooms[] = [
             'id' => $classroom['CLASSROOM_ID'],
             'name' => $classroom['CLASSROOM_NAME']
         ];
@@ -72,10 +72,10 @@ oci_close($classroomConnection);
 
     <form action="teacher.php" method="post">
 <?php
-    for($i = 0; $i < count($classrooms); $i++) {
+    for($i = 0; $i < count($studentClassrooms); $i++) {
 ?>
         <div>
-            <button type="submit" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
+            <button type="submit" name="classroomId" value="<?= $studentClassrooms[$i]['id'] ?>"><?= $studentClassrooms[$i]['name'] ?></button>
         </div>
 <?php
     }

@@ -6,7 +6,10 @@ requireAccount('assignment');
 require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
 $error = '';
+$attemptId = isset($_POST['attemptId']) ? intval(htmlspecialchars($_POST['attemptId'])) : null;
+$isAttempting = $attemptId === null;
 $quizId = intval($_POST['quizId'] ?? $_SESSION['quizId'] ?? 0);
+$userId = $_SESSION['user_id'];
 $quizTitle = '';
 $questions = [];
 $guesses = [];
@@ -19,6 +22,57 @@ if ($quizId <= 0) {
 } else {
     $_SESSION['quizId'] = $quizId;
     $databaseConnection = hum_conn_no_login();
+
+    if($isAttempting) {
+        $attemptsUsed = 0;
+        $attemptsRemaining = 0;
+
+        $allowedSql = '
+            SELECT ATTEMPTS_ALLOWED
+            FROM QUIZ
+            WHERE QUIZ.QUIZ_ID = :quiz_id
+        ';
+        $allowedStatement = oci_parse($databaseConnection, $allowedSql);
+        oci_bind_by_name($allowedStatement, ':quiz_id', $quizId);
+
+        if(!oci_execute($allowedStatement)) {
+            $error = 'Unable to retrieve allowed attempts.';
+        } else {
+            $allowedData = oci_fetch_assoc($allowedStatement);
+
+            $attemptsRemaining = $allowedData['ATTEMPTS_ALLOWED'];
+        }
+        oci_free_statement($allowedStatement);
+
+        // can combine this and previous query into one using group by, see line 70 of 'student.php'
+        $checkSql = '
+            SELECT COUNT(*) PREVIOUS_ATTEMPTS
+            FROM QUIZ_ATTEMPT
+            WHERE QUIZ_ATTEMPT.QUIZ_ID = :quiz_id
+                AND USER_ID = :user_id
+        ';
+        $checkStatement = oci_parse($databaseConnection, $checkSql);
+        oci_bind_by_name($checkStatement, ':quiz_id', $quizId);
+        oci_bind_by_name($checkStatement, ':user_id', $userId);
+
+        if(!oci_execute($checkStatement)) {
+            $error = 'Unable to count previous attempts.';
+        } else {
+            $check = oci_fetch_assoc($checkStatement);
+
+            $attemptsUsed = $check['PREVIOUS_ATTEMPTS'] === null ? 0 : $check['PREVIOUS_ATTEMPTS'];
+            if($attemptsRemaining !== null) {
+                $attemptsRemaining -= $attemptsUsed;
+            }
+        }
+        oci_free_statement($checkStatement);
+        
+        if($attemptsRemaining !== null && $attemptsRemaining <= 0) {
+            header('Location: viewquiz.php');
+            exit();
+        }
+    }
+
     $sql = '
         SELECT "TITLE", "QUIZ_JSON"
         FROM "QUIZ"
@@ -213,10 +267,10 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
         
         oci_close($databaseConnection);
 
-        // if($redirect) {
-        //     header("Location: viewquiz.php");
-        //     exit();
-        // }
+        if($redirect) {
+            header("Location: viewquiz.php");
+            exit();
+        }
     }
 }
 ?>
@@ -285,6 +339,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
                                 name="guesses[<?= $questionIndex ?>]"
                                 value="<?= isset($guesses[$questionIndex]) ? htmlspecialchars((string) $guesses[$questionIndex], ENT_QUOTES, 'UTF-8') : '' ?>"
                                 required="required"
+                                <?= $isAttempting ? '' : 'disabled="disabled"' ?>
                             />
                         <?php else: ?>
                             <?php foreach ($question['answers'] as $answerIndex => $answer): ?>
@@ -297,6 +352,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
                                         id="<?= $optionId ?>"
                                         required="required"
                                         <?= isset($guesses[$questionIndex]) && intval($guesses[$questionIndex]) === $answerIndex ? 'checked="checked"' : '' ?>
+                                        <?= $isAttempting ? '' : 'disabled="disabled"' ?>
                                     />
                                     <label for="<?= $optionId ?>">
                                         <?= htmlspecialchars((string) $answer, ENT_QUOTES, 'UTF-8') ?>
@@ -318,7 +374,9 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
+                <?php if($isAttempting) { ?>
                 <input type="submit" value="Submit" />
+                <?php } ?>
             </form>
         </div>
     </div>

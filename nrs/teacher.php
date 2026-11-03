@@ -1,7 +1,7 @@
 <?php
     session_start();
     require __DIR__ . '/auth.php';
-    requireAccount('dashboard');
+    requireTeacher('dashboard');
     require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
     // Must run before the session value is read below (header.php is included too late)
@@ -138,9 +138,10 @@
         <div class="main">
             <div class="classroom-info">
                 <h2>Classroom Information</h2>
-                <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
+                <!-- <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
                 <p><a href="manage_items.php">Free-floating Items</a></p>
-                <p><a href="manage_drills.php">Manage Drills</a></p>
+                <p><a href="manage_drills.php">Manage Drills</a></p> -->
+                <p><a href="manage_roster.php">Manage Roster</a></p>
 
                 <form method="post" action="signin.php">
                     <input type="submit" name="logout" value="Sign Out" />
@@ -153,7 +154,7 @@
                 <?php if (count($assignments) === 0): ?>
                     <p>No quizzes yet.</p>
                 <?php else: ?>
-                    <form class="quiz-list" action="viewquiz.php" method="post">
+                    <form class="quiz-list" action="edit_quiz.php" method="post">
                         <?php foreach ($assignments as $assignment): 
                             $dueLabel = 'No due date';
                             if (!empty($assignment['due']))
@@ -193,21 +194,21 @@
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
                         <input type="submit" value="Make quiz" />
                     </form> 
-                    <form method="get" action="edit_quiz.php">
+                    <!-- <form method="get" action="edit_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
                         <input type="submit" value="Edit quiz" />
-                    </form>
+                    </form> -->
                     <form method="get" action="delete_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
                         <input type="submit" value="Delete quiz" />
                     </form>
-                    <form method="get" action="assign_content.php">
+                    <!-- <form method="get" action="assign_content.php">
                         <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
                         <input type="submit" value="Assign textbook / drill" />
-                    </form>
+                    </form> -->
                 </div>
     
-                <h3>Drills</h3>
+                <!-- <h3>Drills</h3>
                 <?php if (count($drills) === 0): ?>
                     <p>No drills assigned yet.</p>
                 <?php else: ?>
@@ -221,7 +222,7 @@
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
-                <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p>
+                <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p> -->
 
                 <?php require __DIR__ . '/footer.php'; ?>
             

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require __DIR__ . '/auth.php';
-requireAccount('assignment');
+requireTeacher('assignment');
 require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 
 if (!isset($_SESSION['user_id'])) {

@@ -1,8 +1,8 @@
 <?php
-    session_start();
-    
+    $isTeacher = !empty($_SESSION['teacher']);
+
     $logo_href = "index.php";
-    if (!empty($_SESSION['teacher'])) {
+    if ($isTeacher) {
         $logo_href = "teacher.php";
     } else {
         $logo_href = "student.php";
@@ -12,7 +12,9 @@
     $classroomId = intval($_SESSION['classroomId'] ?? -1);
     $classrooms = [];
     $currentClassroomName = '';
-    $uesrId = $_SESSION['user_id'];
+    $userId = $_SESSION['user_id'];
+    $role = 'student';
+    if($isTeacher) $role = 'teacher';
     $classroomConnection = hum_conn_no_login();
     
     $classroomSql = '
@@ -20,12 +22,13 @@
         FROM CLASSROOM, CLASSROOM_MEMBERSHIP
         WHERE CLASSROOM.CLASSROOM_ID = CLASSROOM_MEMBERSHIP.CLASSROOM_ID
             AND CLASSROOM_MEMBERSHIP.USER_ID = :user_id
-            AND CLASSROOM_MEMBERSHIP.ROLE = \'teacher\'
+            AND CLASSROOM_MEMBERSHIP.ROLE = :role
             AND CLASSROOM.IS_ACTIVE = \'Y\'
         ORDER BY CLASSROOM.CLASSROOM_NAME
     ';
     $classroomStatement = oci_parse($classroomConnection, $classroomSql);
-    oci_bind_by_name($classroomStatement, ':user_id', $uesrId);
+    oci_bind_by_name($classroomStatement, ':user_id', $userId);
+    oci_bind_by_name($classroomStatement, ':role', $role);
 
     if (oci_execute($classroomStatement))
     {
@@ -84,7 +87,7 @@
             </div>
 
             <!-- Classroom list -->
-            <form action="teacher.php" method="post">
+            <form action="<?= $role ?>.php" method="post">
             <?php for($i = 0; $i < count($classrooms); $i++) { ?>
                 <div>
                     <button type="submit" class="classroom-link" name="classroomId" value="<?= $classrooms[$i]['id'] ?>"><?= $classrooms[$i]['name'] ?></button>
@@ -93,19 +96,21 @@
             </form>
 
             <!-- Classroom button options -->
-            <div class="quiz-actions">
-                <form method="get" action="create_classroom.php">
-                    <input type="submit" value="Make classroom" />
-                </form>
+            <?php if($isTeacher) { ?>
+                <div class="quiz-actions">
+                    <form method="get" action="create_classroom.php">
+                        <input type="submit" value="Make classroom" />
+                    </form>
 
-                <form method="get" action="archive_classrooms.php">
-                    <input type="submit" value="Archive classroom" />
-                </form>
+                    <form method="get" action="archive_classrooms.php">
+                        <input type="submit" value="Archive classroom" />
+                    </form>
 
-                <form method="get" action="delete_classrooms.php">
-                    <input type="submit" value="Delete classroom" />
-                </form>
-            </div>
+                    <form method="get" action="delete_classrooms.php">
+                        <input type="submit" value="Delete classroom" />
+                    </form>
+                </div>
+            <?php } ?>
         </div>
     </div>
 </div>

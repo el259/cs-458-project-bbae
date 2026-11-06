@@ -97,8 +97,8 @@ oci_close($databaseConnection);
     <title>Archive Classrooms</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -123,14 +123,14 @@ oci_close($databaseConnection);
                 <form method="post" action="archive_classrooms.php" style="display:inline;">
                     <input type="hidden" name="classroomId" value="<?= $classroom['id'] ?>" />
                     <input type="hidden" name="action" value="archive" />
-                    <input type="submit" value="Archive" />
+                    <input class="button-primary" type="submit" value="Archive" />
                 </form>
             <?php else: ?>
                 <em>(archived)</em>
                 <form method="post" action="archive_classrooms.php" style="display:inline;">
                     <input type="hidden" name="classroomId" value="<?= $classroom['id'] ?>" />
                     <input type="hidden" name="action" value="restore" />
-                    <input type="submit" value="Restore" />
+                    <input class="button-primary"type="submit" value="Restore" />
                 </form>
             <?php endif; ?>
         </div>
@@ -138,7 +138,7 @@ oci_close($databaseConnection);
 <?php endif; ?>
 
 <form method="get" action="teacher.php">
-    <input type="submit" name="goback" value="Go Back" />
+    <input class="button-secondary" type="submit" name="goback" value="Go Back" />
 </form>
 
 <?php require __DIR__ . '/footer.php'; ?>

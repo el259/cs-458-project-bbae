@@ -111,8 +111,8 @@ if ($quizId <= 0) {
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="quiz.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/quiz.css" />
     <style>
         .quiz-with-pdf { display: flex; gap: 1rem; height: calc(100vh - 140px); }
         .pdf-panel { flex: 1; display: flex; flex-direction: column; border: 1px solid #ccc; min-width: 280px; }
@@ -127,7 +127,7 @@ if ($quizId <= 0) {
 <?php require __DIR__ . '/header.php'; ?>
 
 <form method="get" action="student.php">
-    <input type="submit" value="Go Back" />
+    <input class="button-secondary" type="submit" value="Go Back" />
 </form>
 
 <?php if ($error !== ''): ?>
@@ -153,7 +153,7 @@ if ($quizId <= 0) {
     <?php if($attemptsLeft === null || $attemptsLeft > 0) { ?>
     <div class="questions-panel">
         <form method="post" action="quiz.php">
-            <input type="submit" value="Start quiz" />
+            <input class="button-primary" type="submit" value="Start quiz" />
         </form>
     </div>
     <?php } ?>
@@ -174,7 +174,7 @@ if ($quizId <= 0) {
                     } 
                 } ?>
                 <li>
-                    <button type="submit" name="attemptId" value="<?= $attempt['attemptId'] ?>">Attempt <?= htmlspecialchars($attempt['attemptNumber']) ?></button>
+                    <button class="button-primary" type="submit" name="attemptId" value="<?= $attempt['attemptId'] ?>">Attempt <?= htmlspecialchars($attempt['attemptNumber']) ?></button>
                     <?= htmlspecialchars($attempt['score']) ?>/<?= htmlspecialchars($quizData['maxPoints']) ?> (<?= intval((floatval($attempt['score']) / floatval($quizData['maxPoints'])) * 100) ?>%) <?= htmlspecialchars($dueLabel) ?>
                 </li>
                 <?php } ?>

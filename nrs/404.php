@@ -16,8 +16,8 @@ if (isset($_SESSION['quizName'])) {
 <head>
     <title>HumGlot</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="/global.css" />
-    <link rel="stylesheet" href="/404.css" /> 
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/404.css" /> 
 </head>
 
 <body>
@@ -25,7 +25,7 @@ if (isset($_SESSION['quizName'])) {
     <p>Whoops! The page you're looking for doesn't exist yet (sorry!).</p>
 
     <form method="get" action="/teacher.php">
-        <input type="submit" value="Go Back" />
+        <input class="button-primary" type="submit" value="Go Back" />
     </form>
 
 </body>

@@ -81,8 +81,8 @@ oci_close($databaseConnection);
     <title>Manage Textbooks</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -114,7 +114,7 @@ oci_close($databaseConnection);
         <label for="description">Description</label>
         <textarea name="description" id="description" rows="3"></textarea>
     </div>
-    <input type="submit" name="createTextbook" value="Create Textbook" />
+    <input class="button-primary" type="submit" name="createTextbook" value="Create Textbook" />
 </form>
 
 <h2>Your Textbooks</h2>

@@ -75,8 +75,8 @@ oci_close($databaseConnection);
     <title>Free-floating Items</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -101,7 +101,7 @@ oci_close($databaseConnection);
             <option value="grammar">Grammar</option>
         </select>
     </div>
-    <input type="submit" name="createItem" value="Add Item" />
+    <input class="button-primary" type="submit" name="createItem" value="Add Item" />
 </form>
 
 <h2>Your Free-floating Items</h2>

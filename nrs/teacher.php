@@ -119,8 +119,9 @@
         <title>HumGlot</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="global.css" />
-        <link rel="stylesheet" href="teacher.css" />
+        <link rel="stylesheet" href="css/global.css" />
+        <link rel="stylesheet" href="css/teacher.css" />
+        <link rel="stylesheet" href="css/components/list-area.css" />
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -144,7 +145,7 @@
                 <p><a href="manage_roster.php">Manage Roster</a></p>
 
                 <form method="post" action="signin.php">
-                    <input type="submit" name="logout" value="Sign Out" />
+                    <input class="button-secondary" type="submit" name="logout" value="Sign Out" />
                 </form>
             </div>
     
@@ -192,20 +193,12 @@
                 <div class="quiz-actions">
                     <form method="get" action="create_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Make quiz" />
-                    </form> 
-                    <!-- <form method="get" action="edit_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Edit quiz" />
-                    </form> -->
+                        <input class="button-primary" type="submit" value="Make quiz" />
+                    </form>
                     <form method="get" action="delete_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Delete quiz" />
+                        <input class="button-primary" type="submit" value="Delete quiz" />
                     </form>
-                    <!-- <form method="get" action="assign_content.php">
-                        <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Assign textbook / drill" />
-                    </form> -->
                 </div>
     
                 <!-- <h3>Drills</h3>

@@ -53,13 +53,6 @@ a {
 
 /* ---------- Forms ---------- */
 
-label {
-    display: inline-block;
-    margin-bottom: 0.35rem;
-    font-weight: 500;
-    color: #374151;
-}
-
 input[type="text"],
 input[type="number"],
 input[type="password"],
@@ -79,25 +72,6 @@ textarea:focus,
 select:focus {
     border: solid 1px #BADEC4;
     outline: solid 1px #BADEC4;
-}
-
-input[type="submit"],
-button {
-    display: inline-block;
-    margin: 0.25rem 0.4rem 0.25rem 0;
-    padding: 0.65rem 1.1rem;
-    border: none;
-    border-radius: 0.5rem;
-    background: #0A73E3;
-    color: #ffffff;
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-input[type="submit"]:hover,
-button:hover {
-    background: #1d4ed8;
 }
 
 input[type="radio"] {
@@ -191,12 +165,16 @@ footer p {
 }
 
 .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
     display: flex;
     justify-content: left;
     align-items: center;
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
-    margin-bottom: 1.5rem;
+    /* margin-bottom: 1.5rem; */
     height: 2.5rem;
     padding: 1rem 2rem;
 }
@@ -245,28 +223,29 @@ footer p {
 }
 
 .site-header .classroom-popup {
-    position: absolute;
-    top: 4.5em;
+    position: fixed;
+    top: calc(4.5rem + 1px); /* header height, including its bottom border */
+    right: 0;
+    bottom: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
     display: none;
 }
+
 .site-header .classroom-popup .background {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(1px);
 }
+
 .site-header .classroom-popup .content {
     position: relative;
+    box-sizing: border-box;
     width: calc(4rem + 30vw);
     min-width: fit-content;
-    height: calc(100% - 2rem);
-    background: #ffffff;
+    height: 100%;
+    overflow-y: auto;
+    background: #fff;
     border: 1px solid #e5e7eb;
     padding: 2rem;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -357,4 +336,50 @@ footer p {
     .logo {
         font-size: 1.5rem;
     }
+}
+
+
+/* Buttons */
+
+.button-primary {
+    padding: 0.65rem 1.1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: #0A73E3;
+    color: #ffffff;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.button-primary:hover {
+    background: #1d4ed8;
+}
+
+.button-secondary {
+    padding: 0.65rem 1.1rem;
+    border: none;
+    border-radius: 0.5rem;
+    background: #6b7280;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.button-secondary:hover {
+    background: #525252;
+}
+
+.button-tertiary {
+    width: fit-content;
+    padding: 0.65rem 1.1rem;
+    border-radius: 0.5rem;
+    background: transparent;
+    border: 1px solid #ccc;
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.25s, border-color 0.1s;
+}
+.button-tertiary:hover {
+    background: rgba(0, 0, 0, 0.041);
+    border-color: #a1a1a1;
 }

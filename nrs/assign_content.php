@@ -79,8 +79,8 @@ oci_close($databaseConnection);
     <title>Assign Content</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -117,7 +117,7 @@ oci_close($databaseConnection);
                 </option>
             <?php endforeach; ?>
         </select>
-        <input type="submit" name="assign" value="Assign" />
+        <input class="button-primary" type="submit" name="assign" value="Assign" />
     </form>
 <?php endif; ?>
 

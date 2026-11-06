@@ -23,6 +23,8 @@ if (isset($_POST['logout'])) {
 $next = safeNext($_GET['next'] ?? $_POST['next'] ?? null);
 $reason = $_GET['reason'] ?? $_POST['reason'] ?? '';
 $error = '';
+$username = '';
+$signup = isset($_POST['signup']);
 $localAuthEnabled = filter_var(
     getenv('LOCAL_AUTH_ENABLED') ?: 'true',
     FILTER_VALIDATE_BOOLEAN
@@ -37,7 +39,7 @@ $signinMessage = $signinMessages[$reason] ?? 'Sign in to continue!';
 if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
     $username = trim((string) ($_POST['account'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
-    $signup = isset($_POST['signup']);
+    $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
 
     if ($username === '') {
         $error = 'Please enter a username.';
@@ -47,6 +49,8 @@ if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
         $error = 'Please enter a password.';
     } elseif ($signup && strlen($password) < 8) {
         $error = 'Password must contain at least 8 characters.';
+    } elseif ($signup && $password !== $confirmPassword) {
+        $error = 'Passwords do not match.';
     } else {
         $email = strtolower($username) . '@example.com';
         $connection = hum_conn_no_login();
@@ -129,51 +133,75 @@ if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <title>HumGlot</title>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="signin.css" />
-</head>
-<body>
-    <div class="header">
-        <h1 class="special-title">HumGlot</h1>
-        <p class="description">A person who knows and is able to use several languages.</p>
-    </div>
-    <div class="signin-panel">
-<?php if (!isset($_SESSION['account'])): ?>
-        <h2><?= htmlspecialchars($signinMessage, ENT_QUOTES, 'UTF-8') ?></h2>
-        <form method="get" action="cas/login.php">
-            <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
-            <input type="submit" value="Sign in with Humboldt CAS" />
-        </form>
-<?php if ($localAuthEnabled): ?>
-        <hr>
-        <h3>Local account</h3>
-        <form method="post" action="signin.php">
-            <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
-            <input type="hidden" name="reason" value="<?= htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') ?>" />
-            <label for="acc">Username</label>
-            <input type="text" name="account" id="acc" required="required" />
-            <label for="password">Password</label>
-            <input type="password" name="password" id="password" required="required" />
-            <?php if ($error !== ''): ?>
-                <p class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
-            <?php endif; ?>
-            <input type="submit" name="login" value="Log In" />
-            <input type="submit" name="signup" value="Sign Up" />
-        </form>
-<?php endif; ?>
-<?php else: ?>
-        <form method="post" action="signin.php">
-            <input type="submit" name="logout" value="Sign Out" />
-        </form>
-        <form method="get" action="<?= !empty($_SESSION['teacher']) ? 'teacher.php' : 'student.php' ?>">
-            <input type="submit" value="<?= !empty($_SESSION['teacher']) ? 'Teacher page' : 'Student page' ?>" />
-        </form>
-<?php endif; ?>
-    </div>
-    <?php require __DIR__ . '/footer.php'; ?>
-</body>
+    <head>
+        <title>HumGlot</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="css/global.css" />
+        <link rel="stylesheet" href="css/signin.css" />
+    </head>
+    <body>
+        <div class="header">
+            <h1 class="special-title">HumGlot</h1>
+            <p class="description">A person who knows and is able to use several languages.</p>
+        </div>
+        <div class="signin-panel">
+        <?php if (!isset($_SESSION['account'])): ?>
+            <h2><?= htmlspecialchars($signinMessage, ENT_QUOTES, 'UTF-8') ?></h2>
+            <p class="center-btn">
+                <a class="button-tertiary" href="<?= htmlspecialchars('cas/login.php' . ($next !== null ? '?' . http_build_query(['next' => $next], '', '&', PHP_QUERY_RFC3986) : ''), ENT_QUOTES, 'UTF-8') ?>">Continue with Humboldt SSO</a>
+            </p>
+        <?php if ($localAuthEnabled): ?>
+            <div class="auth-tabs" role="tablist" aria-label="Local account" hidden>
+                <button type="button" role="tab" id="login-tab" aria-controls="login-panel">Sign in</button>
+                <button type="button" role="tab" id="signup-tab" aria-controls="signup-panel">Create account</button>
+            </div>
+            <div class="auth-forms" data-active-tab="<?= $signup ? 'signup' : 'login' ?>">
+                <form class="auth-form" method="post" action="signin.php" id="login-panel" role="tabpanel" aria-labelledby="login-tab">
+                    <noscript><h3>Sign in</h3></noscript>
+                    <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                    <input type="hidden" name="reason" value="<?= htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') ?>" />
+                    <label for="login-account">Username</label>
+                    <input type="text" name="account" id="login-account" autocomplete="username" value="<?= htmlspecialchars(!$signup ? $username : '', ENT_QUOTES, 'UTF-8') ?>" required />
+                    <label for="login-password">Password</label>
+                    <input type="password" name="password" id="login-password" autocomplete="current-password" required />
+                    <?php if (!$signup && $error !== ''): ?>
+                        <p class="error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php endif; ?>
+                    <input class="button-primary" type="submit" name="login" value="Log In" />
+                </form>
+                <form class="auth-form" method="post" action="signin.php" id="signup-panel" role="tabpanel" aria-labelledby="signup-tab">
+                    <noscript><h3>Create account</h3></noscript>
+                    <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
+                    <input type="hidden" name="reason" value="<?= htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') ?>" />
+                    <label for="signup-account">Username</label>
+                    <input type="text" name="account" id="signup-account" autocomplete="username" value="<?= htmlspecialchars($signup ? $username : '', ENT_QUOTES, 'UTF-8') ?>" aria-describedby="signup-username-hint" required />
+                    <p class="form-hint" id="signup-username-hint">Letters, numbers, underscores, and hyphens only.</p>
+                    <label for="signup-password">Password</label>
+                    <input type="password" name="password" id="signup-password" autocomplete="new-password" aria-describedby="signup-password-hint" required />
+                    <p class="form-hint" id="signup-password-hint">At least 8 characters.</p>
+                    <label for="confirm-password">Confirm password</label>
+                    <input type="password" name="confirm_password" id="confirm-password" autocomplete="new-password" required />
+                    <?php if ($signup && $error !== ''): ?>
+                        <p class="error" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php endif; ?>
+                    <input class="button-primary" type="submit" name="signup" value="Create account" />
+                </form>
+            </div>
+            
+            <script src="signin.js" defer></script>
+        <?php endif; ?>
+        <?php else: ?>
+            <div class="row-btns">
+                <form method="post" action="signin.php">
+                    <input class="button-secondary" type="submit" name="logout" value="Sign Out" />
+                </form>
+                <form method="get" action="<?= !empty($_SESSION['teacher']) ? 'teacher.php' : 'student.php' ?>">
+                    <input class="button-primary" type="submit" value="<?= !empty($_SESSION['teacher']) ? 'Teacher page' : 'Student page' ?>" />
+                </form>
+            </div>
+        <?php endif; ?>
+        </div>
+        <?php require __DIR__ . '/footer.php'; ?>
+    </body>
 </html>

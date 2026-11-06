@@ -137,8 +137,8 @@ else
     <title>Edit Quiz</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -159,7 +159,7 @@ else
         <form method="post" action="edit_quiz.php?id=<?= $classroomId ?>">
             <?php foreach ($quizzes as $quiz): ?>
                 <div>
-                    <button type="submit" class="classroom-link" name="quizId" value="<?= $quiz['id'] ?>">
+                    <button class="button-primary" type="submit" class="classroom-link" name="quizId" value="<?= $quiz['id'] ?>">
                         <?= htmlspecialchars($quiz['title'], ENT_QUOTES, 'UTF-8') ?>
                     </button>
                     <label>Due: <?= $quiz['due'] ? htmlspecialchars($quiz['due'], ENT_QUOTES, 'UTF-8') : 'No due date' ?></label>
@@ -171,7 +171,7 @@ else
 
 <form method="get" action="teacher.php">
     <input type="hidden" name="id" value="<?= $classroomId ?>" />
-    <input type="submit" name="goback" value="Go Back" />
+    <input class="button-secondary" type="submit" name="goback" value="Go Back" />
 </form>
 
 <?php require __DIR__ . '/footer.php'; ?>

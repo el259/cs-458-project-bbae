@@ -144,8 +144,8 @@ else
     <title>Delete Quiz</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -174,7 +174,7 @@ else
                       onsubmit="return confirm('Permanently delete this quiz and all attempts? This cannot be undone.');">
                     <input type="hidden" name="quizId" value="<?= $quiz['id'] ?>" />
                     <input type="hidden" name="confirmDelete" value="1" />
-                    <input type="submit" value="Delete" />
+                    <input class="button-primary" type="submit" value="Delete" />
                 </form>
             </div>
         <?php endforeach; ?>
@@ -183,7 +183,7 @@ else
 
 <form method="get" action="teacher.php">
     <input type="hidden" name="id" value="<?= $classroomId ?>" />
-    <input type="submit" name="goback" value="Go Back" />
+    <input class="button-secondary" type="submit" name="goback" value="Go Back" />
 </form>
 
 <?php require __DIR__ . '/footer.php'; ?>

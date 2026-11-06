@@ -134,8 +134,8 @@ oci_close($databaseConnection);
     <title>Edit Textbook</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="teacher.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/teacher.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>
@@ -150,7 +150,7 @@ oci_close($databaseConnection);
 <form method="post">
     <input type="text" name="unitTitle" placeholder="Unit title" required />
     <input type="number" name="orderIndex" value="0" style="width:60px" />
-    <input type="submit" name="addUnit" value="Add Unit" />
+    <input class="button-primary" type="submit" name="addUnit" value="Add Unit" />
 </form>
 
 <?php foreach ($units as $unit): ?>
@@ -166,7 +166,7 @@ oci_close($databaseConnection);
             <option value="phrase">Phrase</option>
             <option value="grammar">Grammar</option>
         </select>
-        <input type="submit" name="addItem" value="Add Item" />
+        <input class="button-primary" type="submit" name="addItem" value="Add Item" />
     </form>
 
     <?php if (!empty($itemsByUnit[$unit['UNIT_ID']])): ?>

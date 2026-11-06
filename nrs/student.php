@@ -150,8 +150,9 @@
         <title>HumGlot</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="global.css" />
-        <link rel="stylesheet" href="teacher.css" />
+        <link rel="stylesheet" href="css/global.css" />
+        <link rel="stylesheet" href="css/student.css" />
+        <link rel="stylesheet" href="css/components/list-area.css" />
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -165,138 +166,109 @@
             endif; 
         ?>
 
-        <div class="main">
-            <div class="classroom-info">
-                <!-- <h2>Classroom Information</h2>
-                <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
-                <p><a href="manage_items.php">Free-floating Items</a></p>
-                <p><a href="manage_drills.php">Manage Drills</a></p> -->
+        <div class="list-area">
+            <?php if($totalPoints > 0) { ?>
+            <!-- <h2>Total Points: <?= htmlspecialchars($currentPoints) ?>/<?= htmlspecialchars($totalPoints) ?> (<?= $totalPoints === 0 ? 0 : intval((floatval($currentPoints) / floatval($totalPoints)) * 100)?>%)</h2> -->
+            <?php } ?>
+            <h2>Incomplete Assignments</h2>
 
-                <form method="post" action="signin.php">
-                    <input type="submit" name="logout" value="Sign Out" />
+            <?php if (count($incompleteAssignments) === 0): ?>
+                <p>None</p>
+            <?php else: ?>
+                <form class="quiz-list" action="viewquiz.php" method="post">
+                    <?php foreach ($incompleteAssignments as $assignment): 
+                        $dueLabel = 'No due date';
+                        if (!empty($assignment['due']))
+                        {
+                            $dueLabel = 'Due on: ';
+                            $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
+                            if ($date instanceof DateTime)
+                            {
+                                $dueLabel .= $date->format('F j, Y, g:i A');
+                            }
+                            else
+                            {
+                                $dueLabel .= $assignment['due'];
+                            }
+                        }
+                    ?>
+                    <div class="quiz-item">
+                        <div class="row">
+                            <button class="button-primary" type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
+                                <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                        </div>
+
+                        <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
+                            Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?></label>
+                    </div>
+                    <?php endforeach; ?>
                 </form>
-            </div>
-    
-            <div class="list-area">
-                <?php if($totalPoints > 0) { ?>
-                <!-- <h2>Total Points: <?= htmlspecialchars($currentPoints) ?>/<?= htmlspecialchars($totalPoints) ?> (<?= $totalPoints === 0 ? 0 : intval((floatval($currentPoints) / floatval($totalPoints)) * 100)?>%)</h2> -->
-                <?php } ?>
-                <h2>Incomplete Assignments</h2>
-    
-                <?php if (count($incompleteAssignments) === 0): ?>
-                    <p>None</p>
-                <?php else: ?>
-                    <form class="quiz-list" action="viewquiz.php" method="post">
-                        <?php foreach ($incompleteAssignments as $assignment): 
-                            $dueLabel = 'No due date';
-                            if (!empty($assignment['due']))
+            <?php endif; ?>
+
+            <br />
+            <h2>Completed Assignments</h2>
+            <?php if($totalPointsFromCompleted > 0) { ?>
+            <h2>Points: <?= htmlspecialchars($currentPointsFromCompleted) ?>/<?= htmlspecialchars($totalPointsFromCompleted) ?> (<?= $totalPointsFromCompleted === 0 ? 0 : intval((floatval($currentPointsFromCompleted) / floatval($totalPointsFromCompleted)) * 100)?>%)</h2>
+            <?php } ?>
+
+            <?php if (count($completedAssignments) === 0): ?>
+                <p>None</p>
+            <?php else: ?>
+                <form class="quiz-list" action="viewquiz.php" method="post">
+                    <?php foreach ($completedAssignments as $assignment): 
+                        $dueLabel = 'No due date';
+                        if (!empty($assignment['due']))
+                        {
+                            $dueLabel = 'Due on: ';
+                            $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
+                            if ($date instanceof DateTime)
                             {
-                                $dueLabel = 'Due on: ';
-                                $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
-                                if ($date instanceof DateTime)
-                                {
-                                    $dueLabel .= $date->format('F j, Y, g:i A');
-                                }
-                                else
-                                {
-                                    $dueLabel .= $assignment['due'];
-                                }
+                                $dueLabel .= $date->format('F j, Y, g:i A');
                             }
-                        ?>
-                        <div class="quiz-item">
-                            <div class="row">
-                                <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
-                                    <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
-                                </button>
-                            </div>
-    
-                            <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
-                                Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?></label>
-                        </div>
-                        <?php endforeach; ?>
-                    </form>
-                <?php endif; ?>
-
-                <br />
-                <h2>Completed Assignments</h2>
-                <?php if($totalPointsFromCompleted > 0) { ?>
-                <h2>Points: <?= htmlspecialchars($currentPointsFromCompleted) ?>/<?= htmlspecialchars($totalPointsFromCompleted) ?> (<?= $totalPointsFromCompleted === 0 ? 0 : intval((floatval($currentPointsFromCompleted) / floatval($totalPointsFromCompleted)) * 100)?>%)</h2>
-                <?php } ?>
-    
-                <?php if (count($completedAssignments) === 0): ?>
-                    <p>None</p>
-                <?php else: ?>
-                    <form class="quiz-list" action="viewquiz.php" method="post">
-                        <?php foreach ($completedAssignments as $assignment): 
-                            $dueLabel = 'No due date';
-                            if (!empty($assignment['due']))
+                            else
                             {
-                                $dueLabel = 'Due on: ';
-                                $date = DateTime::createFromFormat('d-M-y h.i.s.u A', $assignment['due']);
-                                if ($date instanceof DateTime)
-                                {
-                                    $dueLabel .= $date->format('F j, Y, g:i A');
-                                }
-                                else
-                                {
-                                    $dueLabel .= $assignment['due'];
-                                }
+                                $dueLabel .= $assignment['due'];
                             }
-                        ?>
-                        <div class="quiz-item">
-                            <div class="row">
-                                <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
-                                    <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
-                                </button>
-                            </div>
-    
-                            <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
-                                Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?><br />
-                                Points: <?= htmlspecialchars($assignment['score'], ENT_QUOTES, 'UTF-8') ?>/<?= htmlspecialchars($assignment['maxScore'], ENT_QUOTES, 'UTF-8') ?> (<?= intval((floatval($assignment['score']) / floatval($assignment['maxScore'])) * 100)?>%)</label>
+                        }
+                    ?>
+                    <div class="quiz-item">
+                        <div class="row">
+                            <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
+                                <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
+                            </button>
                         </div>
-                        <?php endforeach; ?>
-                    </form>
-                <?php endif; ?>
-    
-                <!-- <div class="quiz-actions">
-                    <form method="get" action="create_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Make quiz" />
-                    </form> 
-                    <form method="get" action="edit_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Edit quiz" />
-                    </form>
-                    <form method="get" action="delete_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Delete quiz" />
-                    </form>
-                    <form method="get" action="assign_content.php">
-                        <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Assign textbook / drill" />
-                    </form>
-                </div> -->
-    
-                <!-- <h3>Drills</h3>
-                <?php if (count($drills) === 0): ?>
-                    <p>No drills assigned yet.</p>
-                <?php else: ?>
-                    <ul>
-                        <?php foreach ($drills as $d): ?>
-                            <li>
-                                <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
-                                    <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?> -->
 
-                <?php require __DIR__ . '/footer.php'; ?>
-            
-            </div>  <!-- End of list-area -->
+                        <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
+                            Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?><br />
+                            Points: <?= htmlspecialchars($assignment['score'], ENT_QUOTES, 'UTF-8') ?>/<?= htmlspecialchars($assignment['maxScore'], ENT_QUOTES, 'UTF-8') ?> (<?= intval((floatval($assignment['score']) / floatval($assignment['maxScore'])) * 100)?>%)</label>
+                    </div>
+                    <?php endforeach; ?>
+                </form>
+            <?php endif; ?>
 
-        </div> <!-- End of main container -->
+            <!-- <h3>Drills</h3>
+            <?php if (count($drills) === 0): ?>
+                <p>No drills assigned yet.</p>
+            <?php else: ?>
+                <ul>
+                    <?php foreach ($drills as $d): ?>
+                        <li>
+                            <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
+                                <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?> -->
+
+            <form method="post" action="signin.php">
+                <input class="button-secondary" type="submit" name="logout" value="Sign Out" />
+            </form>
+
+            <?php require __DIR__ . '/footer.php'; ?>
+
+        </div>  <!-- End of list-area -->
     </body>
     <script src="nav_classroom.js"></script>
 </html>

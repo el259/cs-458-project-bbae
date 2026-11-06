@@ -1,0 +1,46 @@
+.list-area .quiz-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.list-area .quiz-item {
+  padding: 1rem;
+  width: 20rem;
+  height: 12rem;
+  background: #fff;
+  border-radius: 0.5rem;
+}
+.list-area .quiz-item .row {
+  display: flex;
+  align-items: center;
+}
+
+.list-area .quiz-item h3 {
+  margin: 0;
+}
+.list-area .quiz-item .edit {
+  margin: 0;
+  margin-left: auto;
+  margin-right: 0;
+  padding: 0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.list-area .quiz-item .edit svg {
+  width: 1.5rem;
+  height: 1.5rem; 
+}
+.list-area .quiz-item .edit:hover {
+    background: #d5d5d5;
+    border: 1px solid #d5d5d5;
+}
+.list-area .quiz-item .edit:focus,
+.list-area .quiz-item .edit:active {
+    outline: none;
+    border: 1px solid #c2c2c2;
+}

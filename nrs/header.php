@@ -103,7 +103,7 @@
                     </form>
 
                     <form method="get" action="archive_classrooms.php">
-                        <input class="button-secondary" type="submit" value="Archive classroom" />
+                        <input class="button-primary" type="submit" value="Archive classroom" />
                     </form>
 
                     <form method="get" action="delete_classrooms.php">

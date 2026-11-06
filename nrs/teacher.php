@@ -193,20 +193,12 @@
                 <div class="quiz-actions">
                     <form method="get" action="create_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Make quiz" />
-                    </form> 
-                    <!-- <form method="get" action="edit_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Edit quiz" />
-                    </form> -->
+                        <input class="button-primary" type="submit" value="Make quiz" />
+                    </form>
                     <form method="get" action="delete_quiz.php">
                         <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Delete quiz" />
+                        <input class="button-primary" type="submit" value="Delete quiz" />
                     </form>
-                    <!-- <form method="get" action="assign_content.php">
-                        <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Assign textbook / drill" />
-                    </form> -->
                 </div>
     
                 <!-- <h3>Drills</h3>

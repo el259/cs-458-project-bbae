@@ -73,7 +73,7 @@ oci_close($databaseConnection);
                 <tr>
                     <td><?= htmlspecialchars($quiz['name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td>
-                        <button type="submit" name="quizId" value="<?= htmlspecialchars($quiz['id'], ENT_QUOTES, 'UTF-8') ?>">
+                        <button class="button-primary" type="submit" name="quizId" value="<?= htmlspecialchars($quiz['id'], ENT_QUOTES, 'UTF-8') ?>">
                             Take
                         </button>
                     </td>
@@ -87,7 +87,7 @@ oci_close($databaseConnection);
 <?php require __DIR__ . '/footer.php'; ?>
 
 <form method="get" action="teacher.php">
-    <input type="submit" name="goback" value="Go Back" />
+    <input class="button-secondary" type="submit" name="goback" value="Go Back" />
 </form>
 
 </body>

@@ -150,7 +150,7 @@ oci_close($databaseConnection);
 <form method="post">
     <input type="text" name="unitTitle" placeholder="Unit title" required />
     <input type="number" name="orderIndex" value="0" style="width:60px" />
-    <input type="submit" name="addUnit" value="Add Unit" />
+    <input class="button-primary" type="submit" name="addUnit" value="Add Unit" />
 </form>
 
 <?php foreach ($units as $unit): ?>
@@ -166,7 +166,7 @@ oci_close($databaseConnection);
             <option value="phrase">Phrase</option>
             <option value="grammar">Grammar</option>
         </select>
-        <input type="submit" name="addItem" value="Add Item" />
+        <input class="button-primary" type="submit" name="addItem" value="Add Item" />
     </form>
 
     <?php if (!empty($itemsByUnit[$unit['UNIT_ID']])): ?>

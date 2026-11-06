@@ -25,7 +25,7 @@ if (isset($_SESSION['quizName'])) {
     <p>Whoops! The page you're looking for doesn't exist yet (sorry!).</p>
 
     <form method="get" action="/teacher.php">
-        <input type="submit" value="Go Back" />
+        <input class="button-primary" type="submit" value="Go Back" />
     </form>
 
 </body>

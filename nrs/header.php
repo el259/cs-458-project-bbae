@@ -81,7 +81,7 @@
         <div class="content">
             <div class="popup-header">
                 <h2>Switch Classrooms</h2>
-                <button class="close-classroom-popup" onclick="closeClassroomPopup()">
+                <button class="button-secondary" class="close-classroom-popup" onclick="closeClassroomPopup()">
                     X
                 </button>
             </div>
@@ -99,15 +99,15 @@
             <?php if($isTeacher) { ?>
                 <div class="quiz-actions">
                     <form method="get" action="create_classroom.php">
-                        <input type="submit" value="Make classroom" />
+                        <input class="button-primary" type="submit" value="Make classroom" />
                     </form>
 
                     <form method="get" action="archive_classrooms.php">
-                        <input type="submit" value="Archive classroom" />
+                        <input class="button-secondary" type="submit" value="Archive classroom" />
                     </form>
 
                     <form method="get" action="delete_classrooms.php">
-                        <input type="submit" value="Delete classroom" />
+                        <input class="button-primary" type="submit" value="Delete classroom" />
                     </form>
                 </div>
             <?php } ?>

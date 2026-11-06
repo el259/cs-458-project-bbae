@@ -121,7 +121,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
 
 <form method="get" action="list_drills.php">
     <input type="hidden" name="id" value="<?= $classroomId ?>" />
-    <input type="submit" value="Back to drills" />
+    <input class="button-secondary" type="submit" value="Back to drills" />
 </form>
 
 <?php if ($error !== ''): ?>
@@ -175,7 +175,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
                     </div>
                 <?php endforeach; ?>
 
-                <input type="submit" value="<?= $showScore ? 'Try Again' : 'Submit' ?>" />
+                <input class="button-primary" type="submit" value="<?= $showScore ? 'Try Again' : 'Submit' ?>" />
             </form>
         </div>
     </div>

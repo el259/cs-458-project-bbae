@@ -121,6 +121,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="css/global.css" />
         <link rel="stylesheet" href="css/teacher.css" />
+        <link rel="stylesheet" href="css/components/list-area.css" />
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -144,7 +145,7 @@
                 <p><a href="manage_roster.php">Manage Roster</a></p>
 
                 <form method="post" action="signin.php">
-                    <input type="submit" name="logout" value="Sign Out" />
+                    <input class="button-secondary" type="submit" name="logout" value="Sign Out" />
                 </form>
             </div>
     

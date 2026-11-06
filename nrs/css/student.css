@@ -1,5 +1,17 @@
-/* Temporary styles, will be revamped with final design */
-body > *:not(.site-header):not(footer) {
-    margin-left: 2rem;
-    margin-right: 2rem;
+.list-area {
+    padding-top: 2rem;
+    padding-left: 6rem;
+    padding-right: 6rem;
+    /* height: 200vh; */
+}
+
+
+@media (max-width: 700px) {
+    .list-area {
+        padding-left: 2rem;
+        padding-right: 2rem;
+        width: 100%;
+        height: fit-content;
+        overflow-y: visible;
+    }
 }

@@ -673,7 +673,7 @@ if (isset($_POST['cancelQuiz']))
 
 <!-- Go back to teacher page -->
 <form method="post" action="create_quiz.php">
-<input type="submit" name="cancelQuiz" value="Cancel" />
+<input class="button-secondary" type="submit" name="cancelQuiz" value="Cancel" />
 </form>
 
 
@@ -697,6 +697,7 @@ if ($_SESSION['quiz']['name'] == '')
     />
 
     <input
+        class="button-primary"
         type="submit"
         name="setQuizName"
         value="Continue"
@@ -713,7 +714,7 @@ else
 <h2><?= htmlspecialchars($_SESSION['quiz']['name'], ENT_QUOTES, 'UTF-8') ?></h2>
 
 <form method="post" action="create_quiz.php">
-    <input type="submit" name="editQuizName" value="Back to quiz name" />
+    <input class="button-secondary" type="submit" name="editQuizName" value="Back to quiz name" />
 </form>
 
 <?php
@@ -755,8 +756,8 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
         </ol>
     <?php endif; ?>
     <form method="post" action="create_quiz.php" class="card-actions">
-        <button type="submit" name="editQuestion" value="<?= $index ?>">Edit</button>
-        <button type="submit" name="removeQuestion" value="<?= $index ?>" class="danger">Remove</button>
+        <button class="button-primary" type="submit" name="editQuestion" value="<?= $index ?>">Edit</button>
+        <button class="button-primary" type="submit" name="removeQuestion" value="<?= $index ?>" class="danger">Remove</button>
     </form>
 </article>
 <?php
@@ -816,7 +817,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 <div id="choiceFields">
     <p class="field-label">Answers <span class="hint">— select the correct one</span></p>
     <div id="answers"></div>
-    <button type="button" id="addAnswer">Add Answer</button>
+    <button class="button-primary" type="button" id="addAnswer">Add Answer</button>
 </div>
 
 <div id="fillFields">
@@ -839,6 +840,7 @@ foreach ($_SESSION['quiz']['questions'] as $index => $question)
 
 <div class="form-actions">
     <input
+        class="button-primary"
         type="submit"
         name="addQuestion"
         value="<?= $editingQuestion === null ? 'Add Question' : 'Save Question' ?>"
@@ -851,7 +853,7 @@ if ($editingQuestion !== null)
 {
 ?>
 <form method="post" action="create_quiz.php">
-    <input type="submit" name="cancelEdit" value="Back to new question" />
+    <input class="button-secondary" type="submit" name="cancelEdit" value="Back to new question" />
 </form>
 <?php
 }
@@ -888,6 +890,7 @@ if (count($_SESSION['quiz']['questions']) > 0)
     </div>
 
     <input
+        class="button-primary"
         type="submit"
         name="createQuiz"
         value="<?= !empty($_SESSION['quiz']['quiz_id']) ? 'Save Quiz' : 'Create Quiz' ?> (<?= count($_SESSION['quiz']['questions']) ?> questions)"

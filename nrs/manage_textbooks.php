@@ -114,7 +114,7 @@ oci_close($databaseConnection);
         <label for="description">Description</label>
         <textarea name="description" id="description" rows="3"></textarea>
     </div>
-    <input type="submit" name="createTextbook" value="Create Textbook" />
+    <input class="button-primary" type="submit" name="createTextbook" value="Create Textbook" />
 </form>
 
 <h2>Your Textbooks</h2>

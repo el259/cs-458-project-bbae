@@ -117,7 +117,7 @@ oci_close($databaseConnection);
                 </option>
             <?php endforeach; ?>
         </select>
-        <input type="submit" name="assign" value="Assign" />
+        <input class="button-primary" type="submit" name="assign" value="Assign" />
     </form>
 <?php endif; ?>
 

@@ -155,7 +155,7 @@ oci_close($databaseConnection);
         </div>
     <?php endif; ?>
 
-    <p><input type="submit" name="createDrill" value="Create Drill" /></p>
+    <p><input class="button-primary" type="submit" name="createDrill" value="Create Drill" /></p>
 </form>
 
 <p><a href="teacher.php">Back</a></p>

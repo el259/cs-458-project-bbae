@@ -296,7 +296,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
 <?php require __DIR__ . '/header.php'; ?>
 
 <form method="get" action="viewquiz.php">
-    <input type="submit" value="Go Back" />
+    <input class="button-secondary" type="submit" value="Go Back" />
 </form>
 
 <?php if ($error !== ''): ?>
@@ -375,7 +375,7 @@ if ($error === '' && isset($_POST['guesses']) && is_array($_POST['guesses']) && 
                     </div>
                 <?php endforeach; ?>
                 <?php if($isAttempting) { ?>
-                <input type="submit" value="Submit" />
+                    <input class="button-primary" type="submit" value="Submit" />
                 <?php } ?>
             </form>
         </div>

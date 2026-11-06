@@ -101,7 +101,7 @@ oci_close($databaseConnection);
             <option value="grammar">Grammar</option>
         </select>
     </div>
-    <input type="submit" name="createItem" value="Add Item" />
+    <input class="button-primary" type="submit" name="createItem" value="Add Item" />
 </form>
 
 <h2>Your Free-floating Items</h2>

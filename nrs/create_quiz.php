@@ -649,8 +649,8 @@ if (isset($_POST['cancelQuiz']))
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="create_quiz.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/create_quiz.css" />
 </head>
 
 <body>

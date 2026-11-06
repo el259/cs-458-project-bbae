@@ -111,8 +111,8 @@ if ($quizId <= 0) {
     <title>HumGlot</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="quiz.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/quiz.css" />
     <style>
         .quiz-with-pdf { display: flex; gap: 1rem; height: calc(100vh - 140px); }
         .pdf-panel { flex: 1; display: flex; flex-direction: column; border: 1px solid #ccc; min-width: 280px; }

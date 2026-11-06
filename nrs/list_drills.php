@@ -97,8 +97,8 @@ if ($classroomId > 0) {
     <title>Drills</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="take.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/take.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>

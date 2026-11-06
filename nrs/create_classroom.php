@@ -202,8 +202,8 @@ if (isset($_POST['cancelClassroom'])) {
 <head>
     <title>Create a Classroom</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="global.css" />
-    <link rel="stylesheet" href="create_classroom.css" />
+    <link rel="stylesheet" href="css/global.css" />
+    <link rel="stylesheet" href="css/create_classroom.css" />
 </head>
 <body>
 <?php require __DIR__ . '/header.php'; ?>

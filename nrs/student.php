@@ -150,8 +150,8 @@
         <title>HumGlot</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="global.css" />
-        <link rel="stylesheet" href="teacher.css" />
+        <link rel="stylesheet" href="css/global.css" />
+        <link rel="stylesheet" href="css/teacher.css" />
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -165,18 +165,7 @@
             endif; 
         ?>
 
-        <div class="main">
-            <div class="classroom-info">
-                <!-- <h2>Classroom Information</h2>
-                <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
-                <p><a href="manage_items.php">Free-floating Items</a></p>
-                <p><a href="manage_drills.php">Manage Drills</a></p> -->
-
-                <form method="post" action="signin.php">
-                    <input type="submit" name="logout" value="Sign Out" />
-                </form>
-            </div>
-    
+        <div class="main">    
             <div class="list-area">
                 <?php if($totalPoints > 0) { ?>
                 <!-- <h2>Total Points: <?= htmlspecialchars($currentPoints) ?>/<?= htmlspecialchars($totalPoints) ?> (<?= $totalPoints === 0 ? 0 : intval((floatval($currentPoints) / floatval($totalPoints)) * 100)?>%)</h2> -->
@@ -258,25 +247,6 @@
                     </form>
                 <?php endif; ?>
     
-                <!-- <div class="quiz-actions">
-                    <form method="get" action="create_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Make quiz" />
-                    </form> 
-                    <form method="get" action="edit_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Edit quiz" />
-                    </form>
-                    <form method="get" action="delete_quiz.php">
-                        <input type="hidden" name="id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Delete quiz" />
-                    </form>
-                    <form method="get" action="assign_content.php">
-                        <input type="hidden" name="classroom_id" value="<?= $classroomId ?>" />
-                        <input type="submit" value="Assign textbook / drill" />
-                    </form>
-                </div> -->
-    
                 <!-- <h3>Drills</h3>
                 <?php if (count($drills) === 0): ?>
                     <p>No drills assigned yet.</p>
@@ -292,9 +262,14 @@
                     </ul>
                 <?php endif; ?> -->
 
+                <form method="post" action="signin.php">
+                    <input type="submit" name="logout" value="Sign Out" />
+                </form>
+
                 <?php require __DIR__ . '/footer.php'; ?>
             
             </div>  <!-- End of list-area -->
+
 
         </div> <!-- End of main container -->
     </body>

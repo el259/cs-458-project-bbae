@@ -137,8 +137,8 @@ if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
         <title>HumGlot</title>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="global.css" />
-        <link rel="stylesheet" href="signin.css" />
+        <link rel="stylesheet" href="css/global.css" />
+        <link rel="stylesheet" href="css/signin.css" />
     </head>
     <body>
         <div class="header">

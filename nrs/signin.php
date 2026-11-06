@@ -144,13 +144,10 @@ if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
     <div class="signin-panel">
 <?php if (!isset($_SESSION['account'])): ?>
         <h2><?= htmlspecialchars($signinMessage, ENT_QUOTES, 'UTF-8') ?></h2>
-        <form method="get" action="cas/login.php">
-            <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
-            <input type="submit" value="Sign in with Humboldt CAS" />
-        </form>
+        <p class="center-btn">
+            <a class="button-tertiary" href="cas/signup.php">Continue with Humboldt SSO</a>
+        </p>
 <?php if ($localAuthEnabled): ?>
-        <hr>
-        <h3>Local account</h3>
         <form method="post" action="signin.php">
             <input type="hidden" name="next" value="<?= htmlspecialchars($next ?? '', ENT_QUOTES, 'UTF-8') ?>" />
             <input type="hidden" name="reason" value="<?= htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') ?>" />
@@ -161,9 +158,12 @@ if ($localAuthEnabled && (isset($_POST['login']) || isset($_POST['signup']))) {
             <?php if ($error !== ''): ?>
                 <p class="error"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
             <?php endif; ?>
-            <input type="submit" name="login" value="Log In" />
-            <input type="submit" name="signup" value="Sign Up" />
+            <input class="button-primary" type="submit" name="login" value="Log In" />
+            <input class="button-primary" type="submit" name="signup" value="Sign Up" />
         </form>
+        <button>
+            Or create an Account
+        </button>
 <?php endif; ?>
 <?php else: ?>
         <form method="post" action="signin.php">

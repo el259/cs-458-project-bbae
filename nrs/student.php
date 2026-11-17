@@ -67,15 +67,17 @@
             } else {
                 // Quizzes
                 $assignmentsSQL = '
-                    SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE, COUNT(ATTEMPT_ID) NUM_ATTEMPTS, MAX(SCORE) HIGHEST_SCORE, QUIZ.ATTEMPTS_ALLOWED - COUNT(ATTEMPT_ID) AS ATTEMPTS_LEFT
+                    SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE, COUNT(ATTEMPT_ID) NUM_ATTEMPTS, MAX(SCORE) HIGHEST_SCORE, QUIZ.ATTEMPTS_ALLOWED - COUNT(ATTEMPT_ID) AS ATTEMPTS_LEFT,
+                           CASE WHEN COUNT(CASE WHEN QUIZ_ATTEMPT.SCORE IS NULL AND QUIZ_ATTEMPT.ATTEMPT_NUMBER IS NOT NULL THEN 1 END) > 0 THEN 1 ELSE 0 END AS HAS_INCOMPLETE_ATTEMPT
                     FROM QUIZ
-                    LEFT JOIN QUIZ_ATTEMPT ON QUIZ.QUIZ_ID = QUIZ_ATTEMPT.QUIZ_ID
+                    LEFT JOIN QUIZ_ATTEMPT ON QUIZ.QUIZ_ID = QUIZ_ATTEMPT.QUIZ_ID AND QUIZ_ATTEMPT.USER_ID = :user_id
                     WHERE QUIZ.CLASSROOM_ID = :classroom_id
                     GROUP BY QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE, QUIZ.ATTEMPTS_ALLOWED
                     ORDER BY NUM_ATTEMPTS, QUIZ.DUE_AT NULLS LAST, ATTEMPTS_LEFT DESC, HIGHEST_SCORE
                 ';
                 $assignmentsStatement = oci_parse($databaseConnection, $assignmentsSQL);
                 oci_bind_by_name($assignmentsStatement, ':classroom_id', $classroomId);
+                oci_bind_by_name($assignmentsStatement, ':user_id', $userId);
                 if(oci_execute($assignmentsStatement, OCI_DEFAULT)) {
                     while ($assignment = oci_fetch_assoc($assignmentsStatement)) {
                         $assignments[] = [
@@ -85,7 +87,8 @@
                             'completed' => $assignment['NUM_ATTEMPTS'] > 0,
                             'score' => $assignment['HIGHEST_SCORE'],
                             'maxScore' => $assignment['POINTS_POSSIBLE'],
-                            'attemptsLeft' => $assignment['ATTEMPTS_LEFT']
+                            'attemptsLeft' => $assignment['ATTEMPTS_LEFT'],
+                            'hasIncompleteAttempt' => $assignment['HAS_INCOMPLETE_ATTEMPT'] == 1
                         ];
                     }
                 }
@@ -124,16 +127,18 @@
         $total = $assignment['maxScore'];
         $score = $assignment['score'];
 
-        if($assignment['completed']) {
+        // If has an incomplete attempt OR never attempted, it's incomplete
+        if($assignment['hasIncompleteAttempt'] || !$assignment['completed']) {
+            $incompleteAssignments[] = $assignment;
+        } else {
+            // All attempts are completed (scored)
             $completedAssignments[] = $assignment;
             $totalPointsFromCompleted += $total;
             $currentPointsFromCompleted += $score;
-        } else {
-            $incompleteAssignments[] = $assignment;
         }
 
         $totalPoints += $total;
-        $currentPoints += $score;
+        $currentPoints += $score ?? 0;
     }
 ?>
 
@@ -175,7 +180,7 @@
             <?php if (count($incompleteAssignments) === 0): ?>
                 <p>None</p>
             <?php else: ?>
-                <form class="quiz-list" action="viewquiz.php" method="post">
+                <div class="quiz-list">
                     <?php foreach ($incompleteAssignments as $assignment): 
                         $dueLabel = 'No due date';
                         if (!empty($assignment['due']))
@@ -192,18 +197,21 @@
                             }
                         }
                     ?>
-                    <div class="quiz-item">
+                    <div class="quiz-item<?= $assignment['hasIncompleteAttempt'] ? ' in-progress' : '' ?>">
                         <div class="row">
-                            <button class="button-primary" type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
-                                <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
-                            </button>
+                            <div class="quiz-title"><?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?></div>
+                        </div>
+                        <div class="row">
+                            <a href="quiz.php?id=<?= htmlspecialchars($assignment['id'], ENT_QUOTES, 'UTF-8') ?>" class="button-primary">
+                                <?= $assignment['hasIncompleteAttempt'] ? 'Continue Attempt' : 'Start Quiz' ?>
+                            </a>
                         </div>
 
-                        <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
+                        <label><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
                             Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?></label>
                     </div>
                     <?php endforeach; ?>
-                </form>
+                </div>
             <?php endif; ?>
 
             <br />
@@ -215,7 +223,7 @@
             <?php if (count($completedAssignments) === 0): ?>
                 <p>None</p>
             <?php else: ?>
-                <form class="quiz-list" action="viewquiz.php" method="post">
+                <div class="quiz-list">
                     <?php foreach ($completedAssignments as $assignment): 
                         $dueLabel = 'No due date';
                         if (!empty($assignment['due']))
@@ -234,17 +242,17 @@
                     ?>
                     <div class="quiz-item">
                         <div class="row">
-                            <button type="submit" name="quizId" id="<?= $assignment['id'] ?>" value="<?= $assignment['id'] ?>">
+                            <a href="quiz.php?id=<?= htmlspecialchars($assignment['id'], ENT_QUOTES, 'UTF-8') ?>" class="button">
                                 <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
-                            </button>
+                            </a>
                         </div>
 
-                        <label for="<?= $assignment['id'] ?>"><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
+                        <label><?= htmlspecialchars($dueLabel, ENT_QUOTES, 'UTF-8') ?><br />
                             Attempts Left: <?= htmlspecialchars($assignment['attemptsLeft'] === null ? 'Unlimited' : $assignment['attemptsLeft'], ENT_QUOTES, 'UTF-8') ?><br />
-                            Points: <?= htmlspecialchars($assignment['score'], ENT_QUOTES, 'UTF-8') ?>/<?= htmlspecialchars($assignment['maxScore'], ENT_QUOTES, 'UTF-8') ?> (<?= intval((floatval($assignment['score']) / floatval($assignment['maxScore'])) * 100)?>%)</label>
+                            Points: <?= htmlspecialchars($assignment['score'] ?? '0', ENT_QUOTES, 'UTF-8') ?>/<?= htmlspecialchars($assignment['maxScore'], ENT_QUOTES, 'UTF-8') ?> (<?= $assignment['score'] !== null ? intval((floatval($assignment['score']) / floatval($assignment['maxScore'])) * 100) : '0' ?>%)</label>
                     </div>
                     <?php endforeach; ?>
-                </form>
+                </div>
             <?php endif; ?>
 
             <!-- <h3>Drills</h3>

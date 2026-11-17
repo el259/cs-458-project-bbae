@@ -8,7 +8,7 @@ require_once dirname(__DIR__) . '/hum_conn_no_login.php';
 $error = '';
 $attemptId = isset($_POST['attemptId']) ? intval(htmlspecialchars($_POST['attemptId'])) : null;
 $isAttempting = $attemptId === null;
-$quizId = intval($_POST['quizId'] ?? $_SESSION['quizId'] ?? 0);
+$quizId = intval($_GET['id'] ?? $_POST['quizId'] ?? $_SESSION['quizId'] ?? 0);
 $userId = $_SESSION['user_id'];
 $quizTitle = '';
 $questions = [];
@@ -40,7 +40,11 @@ if ($quizId <= 0) {
         } else {
             $allowedData = oci_fetch_assoc($allowedStatement);
 
-            $attemptsRemaining = $allowedData['ATTEMPTS_ALLOWED'];
+            if ($allowedData === false) {
+                $error = 'Quiz not found.';
+            } else {
+                $attemptsRemaining = $allowedData['ATTEMPTS_ALLOWED'];
+            }
         }
         oci_free_statement($allowedStatement);
 

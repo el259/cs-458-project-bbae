@@ -35,6 +35,10 @@
     $drills = [];
     $error = '';
     $isTeacher = !empty($_SESSION['teacher']);
+    $stats = [
+        'numStudents' => 0,
+        'quizStats' => []
+    ];
 
     if ($classroomId <= 0) {
         $error = 'Classroom not found.';
@@ -96,6 +100,48 @@
                     }
                 }
                 oci_free_statement($drillStmt);
+
+                // Classroom statistics
+                $numStudentsSql = '
+                    SELECT COUNT(*) AS NUM_STUDENTS
+                    FROM "CLASSROOM_MEMBERSHIP"
+                    WHERE "CLASSROOM_ID" = :classroom_id
+                      AND "ROLE" = \'student\'
+                ';
+                $numStudentsStmt = oci_parse($databaseConnection, $numStudentsSql);
+                oci_bind_by_name($numStudentsStmt, ':classroom_id', $classroomId);
+                if (oci_execute($numStudentsStmt)) {
+                    $row = oci_fetch_assoc($numStudentsStmt);
+                    if ($row) {
+                        $stats['numStudents'] = intval($row['NUM_STUDENTS']);
+                    }
+                }
+                oci_free_statement($numStudentsStmt);
+
+                $quizStatsSql = '
+                    SELECT q."TITLE",
+                           NVL(AVG(a."SCORE"), 0) AS AVG_SCORE,
+                           COUNT(DISTINCT a."USER_ID") AS NUM_ATTEMPTED,
+                           q."POINTS_POSSIBLE"
+                    FROM "QUIZ" q
+                    LEFT JOIN "QUIZ_ATTEMPT" a ON a."QUIZ_ID" = q."QUIZ_ID"
+                    WHERE q."CLASSROOM_ID" = :classroom_id
+                    GROUP BY q."QUIZ_ID", q."TITLE", q."POINTS_POSSIBLE"
+                    ORDER BY q."TITLE"
+                ';
+                $quizStatsStmt = oci_parse($databaseConnection, $quizStatsSql);
+                oci_bind_by_name($quizStatsStmt, ':classroom_id', $classroomId);
+                if (oci_execute($quizStatsStmt)) {
+                    while ($row = oci_fetch_assoc($quizStatsStmt)) {
+                        $stats['quizStats'][] = [
+                            'title' => $row['TITLE'],
+                            'avgScore' => floatval($row['AVG_SCORE']),
+                            'numAttempted' => intval($row['NUM_ATTEMPTED']),
+                            'maxScore' => floatval($row['POINTS_POSSIBLE'])
+                        ];
+                    }
+                }
+                oci_free_statement($quizStatsStmt);
             }
         }
 
@@ -122,6 +168,8 @@
         <link rel="stylesheet" href="css/global.css" />
         <link rel="stylesheet" href="css/teacher.css" />
         <link rel="stylesheet" href="css/components/list-area.css" />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script src="graph.js"></script>
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
@@ -150,6 +198,15 @@
             </div>
     
             <div class="list-area">
+                <h2>Classroom Statistics</h2>
+                <p>Students in classroom: <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php if (count($stats['quizStats']) === 0): ?>
+                    <p>No quiz data yet.</p>
+                <?php else: ?>
+                    <canvas id="quizScoresChart" width="600" height="300"></canvas>
+                    <canvas id="completionChart" width="600" height="300"></canvas>
+                <?php endif; ?>
+
                 <h2>Quizzes</h2>
     
                 <?php if (count($assignments) === 0): ?>
@@ -224,4 +281,10 @@
         </div> <!-- End of main container -->
     </body>
     <script src="nav_classroom.js"></script>
+    <script>
+        const classroomStats = <?= json_encode($stats, JSON_UNESCAPED_UNICODE) ?>;
+        if (typeof renderClassroomStats === 'function') {
+            renderClassroomStats(classroomStats);
+        }
+    </script>
 </html>

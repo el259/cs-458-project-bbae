@@ -38,6 +38,12 @@
     $members = [];
     $removeMember = htmlspecialchars($_POST['removeMember'] ?? '');
     $addMember = htmlspecialchars($_POST['addMember'] ?? '');
+    $stats = [
+        'numStudents' => 0,
+        'quizStats' => [],
+        'overallAvg' => 0,
+        'studentsWithAttempts' => 0
+    ];
 
     if ($classroomId <= 0) {
         $error = 'Classroom not found.';
@@ -183,12 +189,13 @@
         <link rel="stylesheet" href="css/global.css" />
         <link rel="stylesheet" href="css/teacher.css" />
         <link rel="stylesheet" href="css/components/list-area.css" />
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script src="graph.js"></script>
     </head>
     <body>
         <?php require __DIR__ . '/header.php'; ?>
 
         <?php if ($error !== ''):
-            require __DIR__ . '/header.php';
             ?>
                 <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
             <?php
@@ -230,6 +237,21 @@
             </div>
     
             <div class="list-area">
+                <h2>Classroom Statistics</h2>
+                <p>Students: <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?>
+                   | Overall average score: <?= htmlspecialchars($stats['overallAvg'], ENT_QUOTES, 'UTF-8') ?>
+                   | Students with attempts: <?= htmlspecialchars($stats['studentsWithAttempts'], ENT_QUOTES, 'UTF-8') ?> / <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php if (count($stats['quizStats']) > 0): ?>
+                    <canvas id="quizScoresChart" width="600" height="300"></canvas>
+                    <canvas id="completionChart" width="600" height="300"></canvas>
+                    <form method="get" action="export_scores.php">
+                        <input type="hidden" name="classroom" value="<?= $classroomId ?>" />
+                        <input class="button-secondary" type="submit" value="Download scores (CSV)" />
+                    </form>
+                <?php else: ?>
+                    <p>No quiz data yet.</p>
+                <?php endif; ?>
+
                 <h2>Quizzes</h2>
     
                 <?php if (count($assignments) === 0): ?>
@@ -251,7 +273,7 @@
                                 }
                             }
                         ?>
-                        <div class="quiz-item">
+                        <div class="quiz-item<?= (!empty($assignment['due']) && strtotime($assignment['due']) < time()) ? ' past-due' : '' ?>">
                             <div class="row">
                                 <h3>
                                     <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
@@ -281,22 +303,6 @@
                     </form>
                 </div>
     
-                <!-- <h3>Drills</h3>
-                <?php if (count($drills) === 0): ?>
-                    <p>No drills assigned yet.</p>
-                <?php else: ?>
-                    <ul>
-                        <?php foreach ($drills as $d): ?>
-                            <li>
-                                <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
-                                    <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-                <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p> -->
-
                 <?php require __DIR__ . '/footer.php'; ?>
             
             </div>  <!-- End of list-area -->
@@ -304,4 +310,10 @@
         </div> <!-- End of main container -->
     </body>
     <script src="nav_classroom.js"></script>
+    <script>
+        const classroomStats = <?= json_encode($stats, JSON_UNESCAPED_UNICODE) ?>;
+        if (typeof renderClassroomStats === 'function') {
+            renderClassroomStats(classroomStats);
+        }
+    </script>
 </html>

@@ -14,39 +14,10 @@ $classroomId = intval($_GET['id'] ?? ($_SESSION['classroomId'] ?? 0));
 $error = '';
 $drills = [];
 
-echo '<pre>';
-echo "Session user_id: " . var_export($userId, true) . "\n";
-echo "Classroom ID: " . var_export($classroomId, true) . "\n\n";
-
 if ($classroomId > 0) {
     $databaseConnection = hum_conn_no_login();
 
-    // Diagnostic using the same bind names as teacher.php
-    $diagSql = '
-        SELECT "CLASSROOM_ID", "USER_ID", "ROLE"
-        FROM "CLASSROOM_MEMBERSHIP"
-        WHERE "USER_ID" = :user_id
-    ';
-    $diagStmt = oci_parse($databaseConnection, $diagSql);
-    oci_bind_by_name($diagStmt, ':user_id', $userId);
-    echo "Memberships for user $userId:\n";
-    if (oci_execute($diagStmt)) {
-        $found = false;
-        while ($row = oci_fetch_assoc($diagStmt)) {
-            $found = true;
-            echo "  CLASSROOM_ID=" . $row['CLASSROOM_ID'] . " ROLE=" . ($row['ROLE'] ?? '') . "\n";
-        }
-        if (!$found) {
-            echo "  (none found)\n";
-        }
-    } else {
-        $e = oci_error($diagStmt);
-        echo "Diag query failed: " . ($e['message'] ?? 'unknown') . "\n";
-    }
-    oci_free_statement($diagStmt);
-    echo "\n";
-
-    // Membership check with safe bind names
+    // Membership check
     $verifySql = '
         SELECT 1
         FROM "CLASSROOM_MEMBERSHIP"
@@ -56,16 +27,8 @@ if ($classroomId > 0) {
     $verifyStmt = oci_parse($databaseConnection, $verifySql);
     oci_bind_by_name($verifyStmt, ':classroom_id', $classroomId);
     oci_bind_by_name($verifyStmt, ':user_id', $userId);
-    $execOk = oci_execute($verifyStmt);
-    if (!$execOk) {
-        $e = oci_error($verifyStmt);
-        echo "Verify query failed: " . ($e['message'] ?? 'unknown') . "\n";
-    }
-    $ok = $execOk && oci_fetch_assoc($verifyStmt) !== false;
+    $ok = oci_execute($verifyStmt) && oci_fetch_assoc($verifyStmt) !== false;
     oci_free_statement($verifyStmt);
-
-    echo "Membership check result: " . ($ok ? 'PASS' : 'FAIL') . "\n";
-    echo '</pre>';
 
     if ($ok) {
         $sql = '

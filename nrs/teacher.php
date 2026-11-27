@@ -37,7 +37,9 @@
     $isTeacher = !empty($_SESSION['teacher']);
     $stats = [
         'numStudents' => 0,
-        'quizStats' => []
+        'quizStats' => [],
+        'overallAvg' => 0,
+        'studentsWithAttempts' => 0
     ];
 
     if ($classroomId <= 0) {
@@ -132,16 +134,42 @@
                 $quizStatsStmt = oci_parse($databaseConnection, $quizStatsSql);
                 oci_bind_by_name($quizStatsStmt, ':classroom_id', $classroomId);
                 if (oci_execute($quizStatsStmt)) {
+                    $totalAvg = 0;
+                    $countWithAvg = 0;
                     while ($row = oci_fetch_assoc($quizStatsStmt)) {
+                        $avg = floatval($row['AVG_SCORE']);
                         $stats['quizStats'][] = [
                             'title' => $row['TITLE'],
-                            'avgScore' => floatval($row['AVG_SCORE']),
+                            'avgScore' => $avg,
                             'numAttempted' => intval($row['NUM_ATTEMPTED']),
                             'maxScore' => floatval($row['POINTS_POSSIBLE'])
                         ];
+                        if ($avg > 0) {
+                            $totalAvg += $avg;
+                            $countWithAvg++;
+                        }
+                    }
+                    if ($countWithAvg > 0) {
+                        $stats['overallAvg'] = round($totalAvg / $countWithAvg, 1);
                     }
                 }
                 oci_free_statement($quizStatsStmt);
+
+                $attemptedSql = '
+                    SELECT COUNT(DISTINCT a."USER_ID") AS NUM
+                    FROM "QUIZ_ATTEMPT" a
+                    JOIN "QUIZ" q ON q."QUIZ_ID" = a."QUIZ_ID"
+                    WHERE q."CLASSROOM_ID" = :classroom_id
+                ';
+                $attemptedStmt = oci_parse($databaseConnection, $attemptedSql);
+                oci_bind_by_name($attemptedStmt, ':classroom_id', $classroomId);
+                if (oci_execute($attemptedStmt)) {
+                    $row = oci_fetch_assoc($attemptedStmt);
+                    if ($row) {
+                        $stats['studentsWithAttempts'] = intval($row['NUM']);
+                    }
+                }
+                oci_free_statement($attemptedStmt);
             }
         }
 
@@ -175,7 +203,6 @@
         <?php require __DIR__ . '/header.php'; ?>
 
         <?php if ($error !== ''):
-            require __DIR__ . '/header.php';
             ?>
                 <p><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
             <?php
@@ -187,9 +214,6 @@
         <div class="main">
             <div class="classroom-info">
                 <h2>Classroom Information</h2>
-                <!-- <p><a href="manage_textbooks.php">Manage Textbooks</a></p>
-                <p><a href="manage_items.php">Free-floating Items</a></p>
-                <p><a href="manage_drills.php">Manage Drills</a></p> -->
                 <p><a href="manage_roster.php">Manage Roster</a></p>
 
                 <form method="post" action="signin.php">
@@ -199,12 +223,18 @@
     
             <div class="list-area">
                 <h2>Classroom Statistics</h2>
-                <p>Students in classroom: <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?></p>
-                <?php if (count($stats['quizStats']) === 0): ?>
-                    <p>No quiz data yet.</p>
-                <?php else: ?>
+                <p>Students: <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?>
+                   | Overall average score: <?= htmlspecialchars($stats['overallAvg'], ENT_QUOTES, 'UTF-8') ?>
+                   | Students with attempts: <?= htmlspecialchars($stats['studentsWithAttempts'], ENT_QUOTES, 'UTF-8') ?> / <?= htmlspecialchars($stats['numStudents'], ENT_QUOTES, 'UTF-8') ?></p>
+                <?php if (count($stats['quizStats']) > 0): ?>
                     <canvas id="quizScoresChart" width="600" height="300"></canvas>
                     <canvas id="completionChart" width="600" height="300"></canvas>
+                    <form method="get" action="export_scores.php">
+                        <input type="hidden" name="classroom" value="<?= $classroomId ?>" />
+                        <input class="button-secondary" type="submit" value="Download scores (CSV)" />
+                    </form>
+                <?php else: ?>
+                    <p>No quiz data yet.</p>
                 <?php endif; ?>
 
                 <h2>Quizzes</h2>
@@ -228,7 +258,7 @@
                                 }
                             }
                         ?>
-                        <div class="quiz-item">
+                        <div class="quiz-item<?= (!empty($assignment['due']) && strtotime($assignment['due']) < time()) ? ' past-due' : '' ?>">
                             <div class="row">
                                 <h3>
                                     <?= htmlspecialchars($assignment['title'], ENT_QUOTES, 'UTF-8') ?>
@@ -258,22 +288,6 @@
                     </form>
                 </div>
     
-                <!-- <h3>Drills</h3>
-                <?php if (count($drills) === 0): ?>
-                    <p>No drills assigned yet.</p>
-                <?php else: ?>
-                    <ul>
-                        <?php foreach ($drills as $d): ?>
-                            <li>
-                                <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
-                                    <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-                <p><a href="list_drills.php?id=<?= $classroomId ?>">View all drills</a></p> -->
-
                 <?php require __DIR__ . '/footer.php'; ?>
             
             </div>  <!-- End of list-area -->

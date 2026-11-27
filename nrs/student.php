@@ -65,17 +65,23 @@
             if ($classroom === false) {
                 $error = 'Classroom not found.';
             } else {
-                // Quizzes
+                // Quizzes (per current student only)
                 $assignmentsSQL = '
-                    SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE, COUNT(ATTEMPT_ID) NUM_ATTEMPTS, MAX(SCORE) HIGHEST_SCORE, QUIZ.ATTEMPTS_ALLOWED - COUNT(ATTEMPT_ID) AS ATTEMPTS_LEFT
+                    SELECT QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE,
+                           COUNT(ATTEMPT_ID) NUM_ATTEMPTS,
+                           MAX(SCORE) HIGHEST_SCORE,
+                           QUIZ.ATTEMPTS_ALLOWED - COUNT(ATTEMPT_ID) AS ATTEMPTS_LEFT
                     FROM QUIZ
-                    LEFT JOIN QUIZ_ATTEMPT ON QUIZ.QUIZ_ID = QUIZ_ATTEMPT.QUIZ_ID
+                    LEFT JOIN QUIZ_ATTEMPT
+                      ON QUIZ.QUIZ_ID = QUIZ_ATTEMPT.QUIZ_ID
+                     AND QUIZ_ATTEMPT.USER_ID = :user_id
                     WHERE QUIZ.CLASSROOM_ID = :classroom_id
                     GROUP BY QUIZ.QUIZ_ID, QUIZ.TITLE, QUIZ.DUE_AT, QUIZ.POINTS_POSSIBLE, QUIZ.ATTEMPTS_ALLOWED
                     ORDER BY NUM_ATTEMPTS, QUIZ.DUE_AT NULLS LAST, ATTEMPTS_LEFT DESC, HIGHEST_SCORE
                 ';
                 $assignmentsStatement = oci_parse($databaseConnection, $assignmentsSQL);
                 oci_bind_by_name($assignmentsStatement, ':classroom_id', $classroomId);
+                oci_bind_by_name($assignmentsStatement, ':user_id', $userId);
                 if(oci_execute($assignmentsStatement, OCI_DEFAULT)) {
                     while ($assignment = oci_fetch_assoc($assignmentsStatement)) {
                         $assignments[] = [
@@ -167,9 +173,6 @@
         ?>
 
         <div class="list-area">
-            <?php if($totalPoints > 0) { ?>
-            <!-- <h2>Total Points: <?= htmlspecialchars($currentPoints) ?>/<?= htmlspecialchars($totalPoints) ?> (<?= $totalPoints === 0 ? 0 : intval((floatval($currentPoints) / floatval($totalPoints)) * 100)?>%)</h2> -->
-            <?php } ?>
             <h2>Incomplete Assignments</h2>
 
             <?php if (count($incompleteAssignments) === 0): ?>
@@ -246,21 +249,6 @@
                     <?php endforeach; ?>
                 </form>
             <?php endif; ?>
-
-            <!-- <h3>Drills</h3>
-            <?php if (count($drills) === 0): ?>
-                <p>No drills assigned yet.</p>
-            <?php else: ?>
-                <ul>
-                    <?php foreach ($drills as $d): ?>
-                        <li>
-                            <a href="drill.php?id=<?= $d['DRILL_ID'] ?>&classroom=<?= $classroomId ?>">
-                                <?= htmlspecialchars($d['TITLE'], ENT_QUOTES, 'UTF-8') ?>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?> -->
 
             <form method="post" action="signin.php">
                 <input class="button-secondary" type="submit" name="logout" value="Sign Out" />

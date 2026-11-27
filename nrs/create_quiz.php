@@ -874,7 +874,7 @@ if (count($_SESSION['quiz']['questions']) > 0)
             type="text"
             name="pdf"
             id="pdf"
-            placeholder="uploads/pdfs/chapter1.pdf or https://..."
+            placeholder="https://..."
             value="<?= htmlspecialchars($_SESSION['quiz']['pdf'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
         />
     </div>

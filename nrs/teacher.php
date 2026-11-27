@@ -35,6 +35,9 @@
     $drills = [];
     $error = '';
     $isTeacher = !empty($_SESSION['teacher']);
+    $members = [];
+    $removeMember = htmlspecialchars($_POST['removeMember'] ?? '');
+    $addMember = htmlspecialchars($_POST['addMember'] ?? '');
     $stats = [
         'numStudents' => 0,
         'quizStats' => [],
@@ -86,94 +89,84 @@
                 }
                 oci_free_statement($assignmentsStatement);
 
-                // Assigned drills
-                $drillSql = '
-                    SELECT d."DRILL_ID", d."TITLE"
-                    FROM "DRILL" d
-                    JOIN "CLASSROOM_DRILL" cd ON cd."DRILL_ID" = d."DRILL_ID"
-                    WHERE cd."CLASSROOM_ID" = :classroom_id
-                    ORDER BY d."TITLE"
-                ';
-                $drillStmt = oci_parse($databaseConnection, $drillSql);
-                oci_bind_by_name($drillStmt, ':classroom_id', $classroomId);
-                if (oci_execute($drillStmt)) {
-                    while ($d = oci_fetch_assoc($drillStmt)) {
-                        $drills[] = $d;
+                
+                if($removeMember !== '') {
+                    $removeSql = '
+                        DELETE FROM "CLASSROOM_MEMBERSHIP" m
+                        WHERE m."CLASSROOM_ID" = :classroom_id
+                        AND m."USER_ID" = :member_id
+                        AND m."ROLE" = \'student\'
+                    ';
+                    $removeStatement = oci_parse($databaseConnection, $removeSql);
+                    oci_bind_by_name($removeStatement, ':classroom_id', $classroomId);
+                    oci_bind_by_name($removeStatement, ':member_id', $removeMember);
+                    if (!oci_execute($removeStatement)) {
+                        $error = 'Error removing student.';
                     }
+                    oci_free_statement($removeStatement);
                 }
-                oci_free_statement($drillStmt);
 
-                // Classroom statistics
-                $numStudentsSql = '
-                    SELECT COUNT(*) AS NUM_STUDENTS
-                    FROM "CLASSROOM_MEMBERSHIP"
-                    WHERE "CLASSROOM_ID" = :classroom_id
-                      AND "ROLE" = \'student\'
-                ';
-                $numStudentsStmt = oci_parse($databaseConnection, $numStudentsSql);
-                oci_bind_by_name($numStudentsStmt, ':classroom_id', $classroomId);
-                if (oci_execute($numStudentsStmt)) {
-                    $row = oci_fetch_assoc($numStudentsStmt);
-                    if ($row) {
-                        $stats['numStudents'] = intval($row['NUM_STUDENTS']);
+                if($error === '' && $addMember !== '') {
+                    $addSql = '
+                        INSERT INTO "CLASSROOM_MEMBERSHIP" ("CLASSROOM_ID", "USER_ID", "ROLE")
+                        SELECT :classroom_id, APP_USER.USER_ID, \'student\'
+                        FROM APP_USER
+                        WHERE APP_USER.FIRST_NAME = :member_name;
+                    ';
+                    $addStatement = oci_parse($databaseConnection, $addSql);
+                    oci_bind_by_name($addStatement, ':classroom_id', $classroomId);
+                    oci_bind_by_name($addStatement, ':member_name', $addMember);
+                    if (!oci_execute($addStatement)) {
+                        $error = 'Error adding student.';
                     }
+                    oci_free_statement($addStatement);
                 }
-                oci_free_statement($numStudentsStmt);
 
-                $quizStatsSql = '
-                    SELECT q."TITLE",
-                           NVL(AVG(a."SCORE"), 0) AS AVG_SCORE,
-                           COUNT(DISTINCT a."USER_ID") AS NUM_ATTEMPTED,
-                           q."POINTS_POSSIBLE"
-                    FROM "QUIZ" q
-                    LEFT JOIN "QUIZ_ATTEMPT" a ON a."QUIZ_ID" = q."QUIZ_ID"
-                    WHERE q."CLASSROOM_ID" = :classroom_id
-                    GROUP BY q."QUIZ_ID", q."TITLE", q."POINTS_POSSIBLE"
-                    ORDER BY q."TITLE"
-                ';
-                $quizStatsStmt = oci_parse($databaseConnection, $quizStatsSql);
-                oci_bind_by_name($quizStatsStmt, ':classroom_id', $classroomId);
-                if (oci_execute($quizStatsStmt)) {
-                    $totalAvg = 0;
-                    $countWithAvg = 0;
-                    while ($row = oci_fetch_assoc($quizStatsStmt)) {
-                        $avg = floatval($row['AVG_SCORE']);
-                        $stats['quizStats'][] = [
-                            'title' => $row['TITLE'],
-                            'avgScore' => $avg,
-                            'numAttempted' => intval($row['NUM_ATTEMPTED']),
-                            'maxScore' => floatval($row['POINTS_POSSIBLE'])
-                        ];
-                        if ($avg > 0) {
-                            $totalAvg += $avg;
-                            $countWithAvg++;
+                if($error === '') {
+                    $membershipSql = '
+                        SELECT u."USER_ID", u."EMAIL", u."FIRST_NAME"
+                        FROM "CLASSROOM_MEMBERSHIP" m
+                        JOIN "APP_USER" u
+                        ON m."USER_ID" = u."USER_ID"
+                        WHERE m."CLASSROOM_ID" = :classroom_id
+                        AND u."IS_ACTIVE" = \'Y\'
+                        AND m."ROLE" = \'student\'
+                        ORDER BY u."FIRST_NAME"
+                    ';
+                    $membershipStatement = oci_parse($databaseConnection, $membershipSql);
+                    oci_bind_by_name($membershipStatement, ':classroom_id', $classroomId);
+                    if(oci_execute($membershipStatement, OCI_DEFAULT)) {
+                        while ($member = oci_fetch_assoc($membershipStatement)) {
+                            $members[] = [
+                                'id' => $member['USER_ID'],
+                                'email' => $member['EMAIL'],
+                                'firstName' => $member['FIRST_NAME']
+                            ];
                         }
                     }
-                    if ($countWithAvg > 0) {
-                        $stats['overallAvg'] = round($totalAvg / $countWithAvg, 1);
-                    }
-                }
-                oci_free_statement($quizStatsStmt);
+                    oci_free_statement($membershipStatement);
 
-                $attemptedSql = '
-                    SELECT COUNT(DISTINCT a."USER_ID") AS NUM
-                    FROM "QUIZ_ATTEMPT" a
-                    JOIN "QUIZ" q ON q."QUIZ_ID" = a."QUIZ_ID"
-                    WHERE q."CLASSROOM_ID" = :classroom_id
-                ';
-                $attemptedStmt = oci_parse($databaseConnection, $attemptedSql);
-                oci_bind_by_name($attemptedStmt, ':classroom_id', $classroomId);
-                if (oci_execute($attemptedStmt)) {
-                    $row = oci_fetch_assoc($attemptedStmt);
-                    if ($row) {
-                        $stats['studentsWithAttempts'] = intval($row['NUM']);
+                    // Assigned drills
+                    $drillSql = '
+                        SELECT d."DRILL_ID", d."TITLE"
+                        FROM "DRILL" d
+                        JOIN "CLASSROOM_DRILL" cd ON cd."DRILL_ID" = d."DRILL_ID"
+                        WHERE cd."CLASSROOM_ID" = :classroom_id
+                        ORDER BY d."TITLE"
+                    ';
+                    $drillStmt = oci_parse($databaseConnection, $drillSql);
+                    oci_bind_by_name($drillStmt, ':classroom_id', $classroomId);
+                    if (oci_execute($drillStmt)) {
+                        while ($d = oci_fetch_assoc($drillStmt)) {
+                            $drills[] = $d;
+                        }
                     }
+                    oci_free_statement($drillStmt);
                 }
-                oci_free_statement($attemptedStmt);
             }
         }
-
         oci_free_statement($classroomStatement);
+
         oci_close($databaseConnection);
     }
 ?>
@@ -185,7 +178,7 @@
 
     <!--
         Ben Kanter, Blake Culbertson, Andrew Gallimore, Enrique Lopez
-        Last Modified: 9/25/26
+        Last Modified: 11/26/26
         TEACHER.PHP
     -->
 
@@ -214,7 +207,29 @@
         <div class="main">
             <div class="classroom-info">
                 <h2>Classroom Information</h2>
-                <p><a href="manage_roster.php">Manage Roster</a></p>
+                <!-- <p><a href="manage_textbooks.php">Manage Textbooks</a></p> -->
+                <!-- <p><a href="manage_items.php">Free-floating Items</a></p> -->
+                <!-- <p><a href="manage_drills.php">Manage Drills</a></p> -->
+                <?php if(count($members) > 0) { ?>
+                    <form method="post" action="teacher.php">
+                        <legend>Manage Roster</legend>
+                        <ul>
+                        <?php foreach($members as $member) { ?>
+                            <li>
+                                <?= $member['firstName'] ?>
+                                <br />
+                                <button type="submit" name="removeMember" id="<?= $member['id'] ?>" value="<?= $member['id'] ?>">Remove</button>
+                            </li>
+                        <?php } ?>
+                        </ul>
+                    </form>
+                    <form method="post" action="teacher.php">
+                        <input type="text" name="addMember" value="" id="addStudent" placeholder="Student ID" />
+                        <input type="submit" value="Add Student" />
+                    </form>
+                <?php } else { ?>
+                    <p>Roster empty.</p>
+                <?php } ?>
 
                 <form method="post" action="signin.php">
                     <input class="button-secondary" type="submit" name="logout" value="Sign Out" />
